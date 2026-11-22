@@ -10,8 +10,7 @@ les données sont stockées dans le navigateur (IndexedDB via Dexie).
 - React 18 + TypeScript, Vite 7, React Router 7 (routes chargées en lazy dans `src/router.tsx`)
 - Tailwind CSS 3 + composants shadcn/ui (style new-york) sur Radix UI, icônes `lucide-react`
 - `@xyflow/react` (canevas), Monaco (éditeur de code), `@dbml/core`, `node-sql-parser`
-- Dexie (IndexedDB), i18next (22 langues), Vercel AI SDK (`ai`, `@ai-sdk/openai`), zod
-- Tests : Vitest + happy-dom + Testing Library ; Node 24 (`.nvmrc`)
+- Dexie, i18next (22 langues), Vercel AI SDK, zod ; tests Vitest + happy-dom ; Node 24 (`.nvmrc`)
 
 ## Dossiers importants
 - `src/pages/` : pages routées (`editor-page` = éditeur principal, templates, examples…)
@@ -21,8 +20,7 @@ les données sont stockées dans le navigateur (IndexedDB via Dexie).
 - `src/hooks/` : hooks `use-*.ts(x)` (souvent simples accès aux contextes)
 - `src/dialogs/` : boîtes de dialogue (import, export SQL/image, création de diagramme…)
 - `src/lib/domain/` : modèle métier (diagram, db-table, db-field, db-relationship…)
-- `src/lib/data/` : import/export SQL (`sql-import`, `sql-export`), types de données
-- `src/lib/dbml/` : import/export DBML ; `src/lib/env.ts` : variables d'environnement
+- `src/lib/data/` : import/export SQL et types de données ; `src/lib/dbml/` : import/export DBML
 - `src/i18n/locales/` : traductions (`en.ts` est la référence) ; `src/templates-data/` : modèles
 - `src/test/setup.ts` : setup Vitest ; Docker : `Dockerfile`, `default.conf.template` (nginx), `entrypoint.sh`
 
@@ -36,7 +34,7 @@ npm test             # Vitest en mode watch
 npm run test:ci      # Vitest une fois (utilisé en CI)
 npm run preview      # prévisualiser le build
 ```
-IA optionnelle : `VITE_OPENAI_API_KEY`, ou `VITE_OPENAI_API_ENDPOINT` + `VITE_LLM_MODEL_NAME`.
+IA optionnelle (voir `src/lib/env.ts`) : `VITE_OPENAI_API_KEY`, ou `VITE_OPENAI_API_ENDPOINT` + `VITE_LLM_MODEL_NAME`.
 Docker : `docker build -t draftdb . && docker run -p 8080:80 draftdb`.
 
 ## Conventions
@@ -48,5 +46,15 @@ Docker : `docker build -t draftdb . && docker run -p 8080:80 draftdb`.
   dans un fichier `*-variants.tsx` séparé
 - Tests dans des dossiers `__tests__/` à côté du code, fichiers `*.test.ts(x)`
 - Tout texte affiché passe par i18next (`useTranslation`) ; ajouter la clé au moins dans `en.ts`
-- Hook husky pre-commit : `npm run lint` doit passer
-- CI GitHub (`.github/workflows/ci.yaml`) sur PR vers `main` : lint, build, test:ci
+- Pre-commit husky : `npm run lint` doit passer ; CI (`.github/workflows/ci.yaml`) sur PR vers `main`
+
+## Règles de travail
+- Toujours répondre en français.
+- Ne pas lire : dépendances installées (`node_modules/`), fichiers de verrouillage (`package-lock.json`),
+  données (`src/assets/templates/`, `src/assets/examples/`), logs (`*.log`, `logs/`) ni fichiers générés
+  (`dist/`, `stats/`, `coverage/`, `CHANGELOG.md`).
+- Ne jamais committer de secret (`.env`, `*.local`, clés API, tokens).
+- Une branche et une PR par modification.
+- Tout correctif de sécurité est accompagné d'un test qui le couvre.
+- Lancer `npm run lint` et `npm run test:ci` avant d'ouvrir une PR.
+- Expliquer tout ajout, retrait ou changement de version de dépendance (raison, impact).
