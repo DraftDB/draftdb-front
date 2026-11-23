@@ -105,9 +105,10 @@ export interface ChartDBContext {
     updateDatabaseEdition: (databaseEdition?: DatabaseEdition) => Promise<void>;
 
     // Table operations
+    /** null : création refusée par l'API (mode API) ou déjà en cours. */
     createTable: (
         attributes?: Partial<Omit<DBTable, 'id'>>
-    ) => Promise<DBTable>;
+    ) => Promise<DBTable | null>;
     addTable: (
         table: DBTable,
         options?: { updateHistory: boolean }

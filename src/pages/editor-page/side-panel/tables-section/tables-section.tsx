@@ -84,7 +84,9 @@ export const TablesSection: React.FC<TablesSectionProps> = () => {
                 y: centerY,
                 schema: schema?.name,
             });
-            openTableFromSidebar(table.id);
+            if (table) {
+                openTableFromSidebar(table.id);
+            }
         },
         [createTable, openTableFromSidebar, getCenterLocation]
     );
@@ -98,7 +100,9 @@ export const TablesSection: React.FC<TablesSectionProps> = () => {
                 schema: schema?.name,
                 isView: true,
             });
-            openTableFromSidebar(table.id);
+            if (table) {
+                openTableFromSidebar(table.id);
+            }
         },
         [createTable, openTableFromSidebar, getCenterLocation]
     );

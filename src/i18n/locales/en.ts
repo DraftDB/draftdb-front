@@ -550,6 +550,20 @@ export const en = {
 
         on: 'On',
         off: 'Off',
+
+        api_errors: {
+            table: {
+                title: 'Unable to add the table',
+                warnings_title: 'Table added with a warning',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier.',
+                forbidden: 'Only a project designer can modify the schema',
+                not_found: 'Project not found',
+                validation: 'The table was rejected by the server',
+                network: 'The server is unreachable. Check your connection.',
+                unknown: 'An unexpected error occurred. Please try again.',
+            },
+        },
     },
 };
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import type { DBTable } from '@/lib/domain/db-table';
 import { deepCopy, generateId } from '@/lib/utils';
 import { defaultTableColor, defaultAreaColor, viewColor } from '@/lib/colors';
@@ -34,6 +34,14 @@ import {
     type DBCustomType,
 } from '@/lib/domain/db-custom-type';
 import { getDefaultPrimaryKeyType } from '@/lib/data/data-types/data-types';
+import {
+    getDefaultTableName,
+    getUniqueTableName,
+} from '@/lib/domain/table-name';
+import { isApiConfigured } from '@/lib/api/http-client';
+import { describeTableApiError, postTable } from '@/lib/api/tables-api';
+import { toast } from '@/components/toast/use-toast';
+import { useTranslation } from 'react-i18next';
 
 export interface ChartDBProviderProps {
     diagram?: Diagram;
@@ -43,6 +51,7 @@ export interface ChartDBProviderProps {
 export const ChartDBProvider: React.FC<
     React.PropsWithChildren<ChartDBProviderProps>
 > = ({ children, diagram, readonly: readonlyProp }) => {
+    const { t } = useTranslation();
     const { hasDiff } = useDiff();
     const storageDB = useStorage();
     const events = useEventEmitter<ChartDBEvent>();
@@ -335,15 +344,19 @@ export const ChartDBProvider: React.FC<
         [addTables]
     );
 
+    // Garde anti double-clic : une seule création à la fois en mode API.
+    const creatingTableRef = useRef(false);
+
     const createTable: ChartDBContext['createTable'] = useCallback(
         async (attributes) => {
+            const apiMode = isApiConfigured();
             const isView = attributes?.isView ?? false;
-            const count = isView
-                ? tables.filter((t) => t.isView).length + 1
-                : tables.filter((t) => !t.isView).length + 1;
+            // Schéma de la table : celui de l'attribut, sinon celui par défaut
+            // du type de base.
+            const schema = attributes?.schema ?? defaultSchemas[databaseType];
             const table: DBTable = {
                 id: generateId(),
-                name: isView ? `view_${count}` : `table_${count}`,
+                name: getDefaultTableName(tables, isView),
                 x: 0,
                 y: 0,
                 fields: [
@@ -363,18 +376,60 @@ export const ChartDBProvider: React.FC<
                 isView: false,
                 order: tables.length,
                 ...attributes,
-                schema: attributes?.schema ?? defaultSchemas[databaseType],
+                schema,
             };
+
+            // Mode API : un nom passé en attribut (duplication…) est rendu
+            // unique dans le schéma. En mode local, les doublons restent
+            // acceptés comme dans ChartDB d'origine.
+            if (apiMode && attributes?.name !== undefined) {
+                table.name = getUniqueTableName({
+                    tables,
+                    baseName: attributes.name,
+                    schema,
+                });
+            }
 
             table.indexes = getTableIndexesWithPrimaryKey({
                 table,
             });
 
-            await addTable(table);
+            if (!apiMode) {
+                await addTable(table);
+                return table;
+            }
 
-            return table;
+            if (creatingTableRef.current) {
+                return null;
+            }
+            creatingTableRef.current = true;
+            try {
+                // Mode bloquant : la table n'apparaît qu'après le 201.
+                const response = await postTable(diagramId, table);
+                await addTable(table, { updateHistory: false });
+
+                if (response.avertissement) {
+                    toast({
+                        title: t('api_errors.table.warnings_title'),
+                        description: response.avertissement.message,
+                    });
+                }
+                return table;
+            } catch (error) {
+                const description = describeTableApiError(error);
+                toast({
+                    variant: 'destructive',
+                    title: t(description.titleKey),
+                    description:
+                        description.serverMessage ??
+                        t(description.descriptionKey),
+                });
+                return null;
+            } finally {
+                creatingTableRef.current = false;
+            }
         },
-        [addTable, tables, databaseType]
+        [addTable, tables, databaseType, diagramId, t]
     );
 
     const getTable: ChartDBContext['getTable'] = useCallback(

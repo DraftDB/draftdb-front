@@ -560,6 +560,22 @@ export const fr: LanguageTranslation = {
 
         on: 'Activé',
         off: 'Désactivé',
+
+        api_errors: {
+            table: {
+                title: "Impossible d'ajouter la table",
+                warnings_title: 'Table ajoutée avec un avertissement',
+                unauthenticated:
+                    "Vous n'êtes pas authentifié. Vérifiez l'identifiant utilisateur.",
+                forbidden:
+                    'Seul un concepteur du projet peut modifier le schéma',
+                not_found: 'Projet introuvable',
+                validation: 'La table a été refusée par le serveur',
+                network:
+                    'Le serveur est injoignable. Vérifiez votre connexion.',
+                unknown: "Une erreur inattendue s'est produite. Réessayez.",
+            },
+        },
     },
 };
 
