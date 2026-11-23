@@ -7,6 +7,11 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'happy-dom',
+        env: {
+            VITE_API_URL: '',
+            VITE_USER_ID: '',
+            VITE_PROJECT_ID: '',
+        },
         setupFiles: './src/test/setup.ts',
         coverage: {
             reporter: ['text', 'json', 'html'],
