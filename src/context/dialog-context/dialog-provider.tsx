@@ -14,6 +14,8 @@ import type { ImportDatabaseDialogProps } from '@/dialogs/import-database-dialog
 import { ImportDatabaseDialog } from '@/dialogs/import-database-dialog/import-database-dialog';
 import type { TableSchemaDialogProps } from '@/dialogs/table-schema-dialog/table-schema-dialog';
 import { TableSchemaDialog } from '@/dialogs/table-schema-dialog/table-schema-dialog';
+import type { TableNameDialogProps } from '@/dialogs/table-name-dialog/table-name-dialog';
+import { TableNameDialog } from '@/dialogs/table-name-dialog/table-name-dialog';
 import { emptyFn } from '@/lib/utils';
 import { StarUsDialog } from '@/dialogs/star-us-dialog/star-us-dialog';
 import type { ExportImageDialogProps } from '@/dialogs/export-image-dialog/export-image-dialog';
@@ -126,6 +128,26 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
             [setOpenTableSchemaDialog]
         );
 
+    // Table name dialog
+    const [openTableNameDialog, setOpenTableNameDialog] = useState(false);
+    const [tableNameDialogParams, setTableNameDialogParams] = useState<
+        Omit<TableNameDialogProps, 'dialog'>
+    >({
+        isView: false,
+        defaultName: '',
+        tables: [],
+        onConfirm: emptyFn,
+        onCancel: emptyFn,
+    });
+    const openTableNameDialogHandler: DialogContext['openTableNameDialog'] =
+        useCallback(
+            (params) => {
+                setTableNameDialogParams(params);
+                setOpenTableNameDialog(true);
+            },
+            [setOpenTableNameDialog]
+        );
+
     // Export diagram dialog
     const [openExportDiagramDialog, setOpenExportDiagramDialog] =
         useState(false);
@@ -153,6 +175,8 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
                 },
                 openTableSchemaDialog: openTableSchemaDialogHandler,
                 closeTableSchemaDialog: () => setOpenTableSchemaDialog(false),
+                openTableNameDialog: openTableNameDialogHandler,
+                closeTableNameDialog: () => setOpenTableNameDialog(false),
                 openStarUsDialog: () => setOpenStarUsDialog(true),
                 closeStarUsDialog: () => setOpenStarUsDialog(false),
                 closeExportImageDialog: () => setOpenExportImageDialog(false),
@@ -189,6 +213,10 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
             <TableSchemaDialog
                 dialog={{ open: openTableSchemaDialog }}
                 {...tableSchemaDialogParams}
+            />
+            <TableNameDialog
+                dialog={{ open: openTableNameDialog }}
+                {...tableNameDialogParams}
             />
             <StarUsDialog dialog={{ open: openStarUsDialog }} />
             <ExportImageDialog

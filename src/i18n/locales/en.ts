@@ -550,6 +550,35 @@ export const en = {
 
         on: 'On',
         off: 'Off',
+
+        table_name_dialog: {
+            table_title: 'Name the table',
+            view_title: 'Name the view',
+            description:
+                'Choose a name before the table is sent to the server.',
+            label: 'Name',
+            confirm: 'Create',
+            cancel: 'Cancel',
+            errors: {
+                empty: 'The name cannot be empty',
+                too_long: 'The name cannot exceed {{max}} characters',
+                taken: 'A table with this name already exists in this schema',
+            },
+        },
+
+        api_errors: {
+            table: {
+                title: 'Unable to add the table',
+                warnings_title: 'Table added with a warning',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier.',
+                forbidden: 'Only a project designer can modify the schema',
+                not_found: 'Project not found',
+                validation: 'The table was rejected by the server',
+                network: 'The server is unreachable. Check your connection.',
+                unknown: 'An unexpected error occurred. Please try again.',
+            },
+        },
     },
 };
 
