@@ -70,12 +70,22 @@ const buildError = (status: number, payload: unknown): ApiError => {
                 details: payload,
             });
         }
-        if (isRecord(detail) && typeof detail.message === 'string') {
+        // detail objet : le code est lu même sans message (ex. les 409
+        // CONFIRMATION_REQUISE du back). details reste le corps complet, comme
+        // dans les autres branches, pour getServerMessage et les appelants.
+        if (
+            isRecord(detail) &&
+            (typeof detail.code === 'string' ||
+                typeof detail.message === 'string')
+        ) {
             return new ApiError({
                 status,
                 code: typeof detail.code === 'string' ? detail.code : undefined,
-                message: detail.message,
-                details: detail,
+                message:
+                    typeof detail.message === 'string'
+                        ? detail.message
+                        : fallback,
+                details: payload,
             });
         }
         if (typeof payload.message === 'string') {

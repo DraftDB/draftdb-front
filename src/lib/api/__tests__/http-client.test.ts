@@ -137,6 +137,46 @@ describe('http-client', () => {
             expect(error.status).toBe(409);
             expect(error.code).toBe('E_X');
             expect(error.message).toBe('Bad');
+            // details est le corps complet, pas l'objet interne.
+            expect(error.details).toEqual({
+                detail: { code: 'E_X', message: 'Bad' },
+            });
+        });
+
+        it('lit le code d’un 409 de suppression sans message', async () => {
+            const body = {
+                detail: {
+                    code: 'CONFIRMATION_REQUISE',
+                    cles_etrangeres: [{ id: 'fk1' }],
+                    index: [{ id: 'idx1' }],
+                },
+            };
+            fetchMock.mockResolvedValue(jsonResponse(body, 409));
+            const error = await rejection(apiRequest('/api/x'));
+            expect(error.status).toBe(409);
+            expect(error.code).toBe('CONFIRMATION_REQUISE');
+            expect(error.message).toBe('HTTP 409');
+            expect(error.details).toEqual(body);
+            const { detail } = error.details as typeof body;
+            expect(detail.cles_etrangeres).toEqual([{ id: 'fk1' }]);
+            expect(detail.index).toEqual([{ id: 'idx1' }]);
+        });
+
+        it('lit le code d’un 409 d’import sans message', async () => {
+            const body = {
+                detail: {
+                    code: 'CONFIRMATION_REQUISE',
+                    nb_tables_existantes: 3,
+                },
+            };
+            fetchMock.mockResolvedValue(jsonResponse(body, 409));
+            const error = await rejection(apiRequest('/api/x'));
+            expect(error.status).toBe(409);
+            expect(error.code).toBe('CONFIRMATION_REQUISE');
+            expect(error.message).toBe('HTTP 409');
+            expect(error.details).toEqual(body);
+            const { detail } = error.details as typeof body;
+            expect(detail.nb_tables_existantes).toBe(3);
         });
 
         it('lit { code, message }', async () => {
