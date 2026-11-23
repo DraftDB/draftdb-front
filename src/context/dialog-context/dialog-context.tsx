@@ -1,6 +1,7 @@
 import { createContext } from 'react';
 import { emptyFn } from '@/lib/utils';
 import type { TableSchemaDialogProps } from '@/dialogs/table-schema-dialog/table-schema-dialog';
+import type { TableNameDialogProps } from '@/dialogs/table-name-dialog/table-name-dialog';
 import type { ImportDatabaseDialogProps } from '@/dialogs/import-database-dialog/import-database-dialog';
 import type { ExportSQLDialogProps } from '@/dialogs/export-sql-dialog/export-sql-dialog';
 import type { ExportImageDialogProps } from '@/dialogs/export-image-dialog/export-image-dialog';
@@ -45,6 +46,10 @@ export interface DialogContext {
     ) => void;
     closeTableSchemaDialog: () => void;
 
+    // Table name dialog (API mode)
+    openTableNameDialog: (params: Omit<TableNameDialogProps, 'dialog'>) => void;
+    closeTableNameDialog: () => void;
+
     // Star us dialog
     openStarUsDialog: () => void;
     closeStarUsDialog: () => void;
@@ -81,6 +86,8 @@ export const dialogContext = createContext<DialogContext>({
     closeImportDatabaseDialog: emptyFn,
     openTableSchemaDialog: emptyFn,
     closeTableSchemaDialog: emptyFn,
+    openTableNameDialog: emptyFn,
+    closeTableNameDialog: emptyFn,
     openStarUsDialog: emptyFn,
     closeStarUsDialog: emptyFn,
     openExportImageDialog: emptyFn,

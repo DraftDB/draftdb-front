@@ -561,6 +561,21 @@ export const fr: LanguageTranslation = {
         on: 'Activé',
         off: 'Désactivé',
 
+        table_name_dialog: {
+            table_title: 'Nommer la table',
+            view_title: 'Nommer la vue',
+            description:
+                "Choisissez un nom avant l'envoi de la table au serveur.",
+            label: 'Nom',
+            confirm: 'Créer',
+            cancel: 'Annuler',
+            errors: {
+                empty: 'Le nom ne peut pas être vide',
+                too_long: 'Le nom ne peut pas dépasser {{max}} caractères',
+                taken: 'Une table portant ce nom existe déjà dans ce schéma',
+            },
+        },
+
         api_errors: {
             table: {
                 title: "Impossible d'ajouter la table",

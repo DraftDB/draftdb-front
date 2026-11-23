@@ -551,6 +551,21 @@ export const en = {
         on: 'On',
         off: 'Off',
 
+        table_name_dialog: {
+            table_title: 'Name the table',
+            view_title: 'Name the view',
+            description:
+                'Choose a name before the table is sent to the server.',
+            label: 'Name',
+            confirm: 'Create',
+            cancel: 'Cancel',
+            errors: {
+                empty: 'The name cannot be empty',
+                too_long: 'The name cannot exceed {{max}} characters',
+                taken: 'A table with this name already exists in this schema',
+            },
+        },
+
         api_errors: {
             table: {
                 title: 'Unable to add the table',

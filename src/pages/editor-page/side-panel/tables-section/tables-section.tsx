@@ -17,6 +17,7 @@ import { filterTable } from '@/lib/domain/diagram-filter/filter';
 import { defaultSchemas } from '@/lib/data/default-schemas';
 import { ButtonWithAlternatives } from '@/components/button/button-with-alternatives';
 import { useLocalConfig } from '@/hooks/use-local-config';
+import { useTableNamePrompt } from '@/hooks/use-table-name-prompt';
 
 export interface TablesSectionProps {}
 
@@ -25,6 +26,7 @@ export const TablesSection: React.FC<TablesSectionProps> = () => {
     const { filter, schemasDisplayed, hasActiveFilter, resetFilter } =
         useDiagramFilter();
     const { openTableSchemaDialog } = useDialog();
+    const promptTableName = useTableNamePrompt();
     const viewport = useViewport();
     const { t } = useTranslation();
     const { openTableFromSidebar } = useLayout();
@@ -78,33 +80,63 @@ export const TablesSection: React.FC<TablesSectionProps> = () => {
 
     const createTableWithLocation = useCallback(
         async ({ schema }: { schema?: DBSchema }) => {
+            // Position prise avant la saisie du nom : le canvas peut bouger.
             const { centerX, centerY } = getCenterLocation();
+            const answer = await promptTableName({
+                isView: false,
+                schema: schema?.name ?? defaultSchemas[databaseType],
+            });
+            if (!answer) {
+                return;
+            }
             const table = await createTable({
                 x: centerX,
                 y: centerY,
                 schema: schema?.name,
+                ...answer,
             });
             if (table) {
                 openTableFromSidebar(table.id);
             }
         },
-        [createTable, openTableFromSidebar, getCenterLocation]
+        [
+            createTable,
+            openTableFromSidebar,
+            getCenterLocation,
+            promptTableName,
+            databaseType,
+        ]
     );
 
     const createViewWithLocation = useCallback(
         async ({ schema }: { schema?: DBSchema }) => {
+            // Position prise avant la saisie du nom : le canvas peut bouger.
             const { centerX, centerY } = getCenterLocation();
+            const answer = await promptTableName({
+                isView: true,
+                schema: schema?.name ?? defaultSchemas[databaseType],
+            });
+            if (!answer) {
+                return;
+            }
             const table = await createTable({
                 x: centerX,
                 y: centerY,
                 schema: schema?.name,
                 isView: true,
+                ...answer,
             });
             if (table) {
                 openTableFromSidebar(table.id);
             }
         },
-        [createTable, openTableFromSidebar, getCenterLocation]
+        [
+            createTable,
+            openTableFromSidebar,
+            getCenterLocation,
+            promptTableName,
+            databaseType,
+        ]
     );
 
     const handleCreateTable = useCallback(
