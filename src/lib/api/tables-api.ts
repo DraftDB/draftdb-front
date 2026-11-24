@@ -1,11 +1,6 @@
 import type { DBTable } from '@/lib/domain/db-table';
 import type { DBIndex } from '@/lib/domain/db-index';
-import {
-    ApiError,
-    apiRequest,
-    getProjetId,
-    getServerMessage,
-} from './http-client';
+import { ApiError, apiRequest, getServerMessage } from './http-client';
 
 /** Longueur maximale d'un nom (table, colonne, index) acceptée par le back. */
 export const MAX_NAME_LENGTH = 63;
@@ -71,14 +66,100 @@ export const toTableBody = (table: DBTable): TableBody => {
     };
 };
 
+/** En mode API, l'id du diagramme est l'id du projet (UUID renvoyé par POST /api/projets). */
 export const postTable = (
     diagramId: string,
     table: DBTable
 ): Promise<PostTableResponse> =>
     apiRequest<PostTableResponse>(
-        `/api/projets/${encodeURIComponent(getProjetId(diagramId))}/tables`,
+        `/api/projets/${encodeURIComponent(diagramId)}/tables`,
         { method: 'POST', body: toTableBody(table) }
     );
+
+export interface DeleteTableResponse {
+    id_table: string;
+    numero_sequence: number;
+}
+
+export interface TableForeignKeyLink {
+    id: string;
+    name: string;
+    sourceTableId: string;
+    targetTableId: string;
+    sourceFieldId: string;
+    targetFieldId: string;
+}
+
+export interface TableIndexLink {
+    id: string;
+    name: string;
+}
+
+/** Liens de la table renvoyés par le serveur dans le 409 (jamais calculés ici). */
+export interface TableLinks {
+    cles_etrangeres: TableForeignKeyLink[];
+    index: TableIndexLink[];
+}
+
+/** Seul code métier du back : première demande de suppression, sans confirmation. */
+export const CONFIRMATION_REQUISE = 'CONFIRMATION_REQUISE';
+
+/**
+ * DELETE /api/projets/{id}/tables/{id_table}?confirme_suppression=false|true.
+ * Le paramètre est envoyé à chaque appel. Pas de corps de requête.
+ */
+export const deleteTable = (
+    projetId: string,
+    tableId: string,
+    { confirmation }: { confirmation: boolean },
+    signal?: AbortSignal
+): Promise<DeleteTableResponse> =>
+    apiRequest<DeleteTableResponse>(
+        `/api/projets/${encodeURIComponent(projetId)}/tables/${encodeURIComponent(tableId)}`,
+        {
+            method: 'DELETE',
+            query: { confirme_suppression: confirmation ? 'true' : 'false' },
+            signal,
+        }
+    );
+
+export const isConfirmationRequired = (error: unknown): error is ApiError =>
+    error instanceof ApiError &&
+    error.status === 409 &&
+    error.code === CONFIRMATION_REQUISE;
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Liens du 409 : lit uniquement details.detail.cles_etrangeres et .index.
+ * Un tableau absent devient [] ; si les deux manquent, null (réponse inattendue).
+ */
+export const getTableLinksFromConfirmation = (
+    error: unknown
+): TableLinks | null => {
+    if (!isConfirmationRequired(error) || !isRecord(error.details)) {
+        return null;
+    }
+    const { detail } = error.details;
+    if (!isRecord(detail)) {
+        return null;
+    }
+    const { cles_etrangeres, index } = detail;
+    if (!Array.isArray(cles_etrangeres) && !Array.isArray(index)) {
+        return null;
+    }
+    return {
+        cles_etrangeres: Array.isArray(cles_etrangeres)
+            ? (cles_etrangeres.filter(
+                  isRecord
+              ) as unknown as TableForeignKeyLink[])
+            : [],
+        index: Array.isArray(index)
+            ? (index.filter(isRecord) as unknown as TableIndexLink[])
+            : [],
+    };
+};
 
 export type TableApiErrorKind =
     | 'network'
@@ -112,22 +193,29 @@ export const getTableApiErrorKind = (error: unknown): TableApiErrorKind => {
     }
 };
 
+export type TableApiOperation = 'create' | 'delete';
+
+type TableApiErrorNamespace = 'api_errors.table' | 'api_errors.table_delete';
+
 export interface TableApiErrorDescription {
     kind: TableApiErrorKind;
-    titleKey: 'api_errors.table.title';
-    descriptionKey: `api_errors.table.${TableApiErrorKind}`;
+    titleKey: `${TableApiErrorNamespace}.title`;
+    descriptionKey: `${TableApiErrorNamespace}.${TableApiErrorKind}`;
     /** Motif exact du back, renseigné seulement pour un 422. */
     serverMessage?: string;
 }
 
 export const describeTableApiError = (
-    error: unknown
+    error: unknown,
+    operation: TableApiOperation = 'create'
 ): TableApiErrorDescription => {
     const kind = getTableApiErrorKind(error);
+    const namespace: TableApiErrorNamespace =
+        operation === 'delete' ? 'api_errors.table_delete' : 'api_errors.table';
     return {
         kind,
-        titleKey: 'api_errors.table.title',
-        descriptionKey: `api_errors.table.${kind}`,
+        titleKey: `${namespace}.title`,
+        descriptionKey: `${namespace}.${kind}`,
         serverMessage:
             kind === 'validation' ? getServerMessage(error) : undefined,
     };

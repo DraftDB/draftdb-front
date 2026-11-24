@@ -605,6 +605,25 @@ export const en = {
                 'The dump was saved on the server, but the diagram could not be refreshed in this window. Reload the page to display the imported schema; do not import the file again.',
         },
 
+        new_project_form: {
+            title: 'New project',
+            description:
+                'Name your project. The database dialect is not required.',
+            name_label: 'Name',
+            name_placeholder: 'My project',
+            description_label: 'Description (optional)',
+            description_placeholder: 'What is this project about?',
+            create: 'Create project',
+            creating: 'Creating…',
+            cancel: 'Cancel',
+            errors: {
+                required: 'The name cannot be empty',
+                name_too_long: 'The name cannot exceed {{max}} characters',
+                description_too_long:
+                    'The description cannot exceed {{max}} characters',
+            },
+        },
+
         api_errors: {
             table: {
                 title: 'Unable to add the table',
@@ -631,6 +650,35 @@ export const en = {
                     'The server is unreachable. Check your connection. Nothing was saved.',
                 unknown:
                     'An unexpected error occurred. Nothing was saved. Please try again.',
+            },
+            table_delete: {
+                title: 'Could not delete the table',
+                confirm_title: 'Delete table "{{name}}"?',
+                confirm_description:
+                    'The table and its columns will be removed from the schema. The following links are affected:',
+                foreign_keys: 'Foreign keys',
+                indexes: 'Indexes',
+                no_links: 'No foreign key or index is linked to this table.',
+                confirm_action: 'Delete',
+                cancel: 'Cancel',
+                unauthenticated: 'You must be signed in to delete a table.',
+                forbidden:
+                    'Only a designer of the project can change the schema.',
+                not_found: 'Table or project not found. Nothing was changed.',
+                validation:
+                    'The request was refused by the server. Nothing was changed.',
+                network: 'The server is unreachable. Nothing was changed.',
+                unknown: 'An unexpected error occurred. Nothing was changed.',
+            },
+            projet: {
+                title: 'Unable to create the project',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier.',
+                validation: 'The project was rejected by the server',
+                network: 'The server is unreachable. Check your connection.',
+                unknown: 'An unexpected error occurred. Please try again.',
+                local_storage:
+                    'The project was created on the server but could not be saved in this browser. Please try again.',
             },
         },
     },

@@ -1,12 +1,7 @@
 import type { Diagram } from '@/lib/domain/diagram';
 import type { DBTable } from '@/lib/domain/db-table';
 import { DatabaseType } from '@/lib/domain/database-type';
-import {
-    ApiError,
-    apiRequest,
-    getProjetId,
-    getServerMessage,
-} from './http-client';
+import { ApiError, apiRequest, getServerMessage } from './http-client';
 
 /** Longueur maximale d'un nom (table, colonne, index) acceptée par le back. */
 const MAX_NAME_LENGTH = 63;
@@ -135,7 +130,7 @@ export const postImport = (
     signal?: AbortSignal
 ): Promise<ImportDumpResponse> =>
     apiRequest<ImportDumpResponse>(
-        `/api/projets/${encodeURIComponent(getProjetId(diagramId))}/import`,
+        `/api/projets/${encodeURIComponent(diagramId)}/import`,
         { method: 'POST', body: request, signal }
     );
 

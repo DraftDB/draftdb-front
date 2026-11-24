@@ -615,6 +615,25 @@ export const fr: LanguageTranslation = {
                 "Le dump a bien été enregistré sur le serveur, mais le diagramme n'a pas pu être mis à jour dans cette fenêtre. Rechargez la page pour afficher le schéma importé ; inutile de réimporter le fichier.",
         },
 
+        new_project_form: {
+            title: 'Nouveau projet',
+            description:
+                "Donnez un nom à votre projet. Le dialecte de base de données n'est pas demandé.",
+            name_label: 'Nom',
+            name_placeholder: 'Mon projet',
+            description_label: 'Description (facultative)',
+            description_placeholder: 'De quoi parle ce projet ?',
+            create: 'Créer le projet',
+            creating: 'Création…',
+            cancel: 'Annuler',
+            errors: {
+                required: 'Le nom ne peut pas être vide',
+                name_too_long: 'Le nom ne peut pas dépasser {{max}} caractères',
+                description_too_long:
+                    'La description ne peut pas dépasser {{max}} caractères',
+            },
+        },
+
         api_errors: {
             table: {
                 title: "Impossible d'ajouter la table",
@@ -644,6 +663,39 @@ export const fr: LanguageTranslation = {
                     "Le serveur est injoignable. Vérifiez votre connexion. Rien n'a été enregistré.",
                 unknown:
                     "Une erreur inattendue s'est produite. Rien n'a été enregistré. Réessayez.",
+            },
+            table_delete: {
+                title: 'Impossible de supprimer la table',
+                confirm_title: 'Supprimer la table « {{name}} » ?',
+                confirm_description:
+                    'La table et ses colonnes seront retirées du schéma. Liens concernés :',
+                foreign_keys: 'Clés étrangères',
+                indexes: 'Index',
+                no_links:
+                    'Aucune clé étrangère ni aucun index ne touche cette table.',
+                confirm_action: 'Supprimer',
+                cancel: 'Annuler',
+                unauthenticated:
+                    'Vous devez être connecté pour supprimer une table.',
+                forbidden:
+                    'Seul un concepteur du projet peut modifier le schéma.',
+                not_found: "Table ou projet introuvable. Rien n'a été modifié.",
+                validation:
+                    "La demande a été refusée par le serveur. Rien n'a été modifié.",
+                network: "Le serveur est injoignable. Rien n'a été modifié.",
+                unknown:
+                    "Une erreur inattendue s'est produite. Rien n'a été modifié.",
+            },
+            projet: {
+                title: 'Impossible de créer le projet',
+                unauthenticated:
+                    "Vous n'êtes pas authentifié. Vérifiez l'identifiant utilisateur.",
+                validation: 'Le projet a été refusé par le serveur',
+                network:
+                    'Le serveur est injoignable. Vérifiez votre connexion.',
+                unknown: "Une erreur inattendue s'est produite. Réessayez.",
+                local_storage:
+                    "Le projet a été créé sur le serveur mais n'a pas pu être enregistré dans ce navigateur. Réessayez.",
             },
         },
     },

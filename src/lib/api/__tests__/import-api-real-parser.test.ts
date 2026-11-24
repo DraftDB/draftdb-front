@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/env', () => ({
     API_URL: '/',
     USER_ID: '',
-    PROJECT_ID: '',
 }));
 
 import type { Diagram } from '@/lib/domain/diagram';

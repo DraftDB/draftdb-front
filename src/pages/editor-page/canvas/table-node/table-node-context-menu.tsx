@@ -13,6 +13,7 @@ import { Copy, Pencil, Trash2, Workflow } from 'lucide-react';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCanvas } from '@/hooks/use-canvas';
+import { useDeleteTable } from '@/hooks/use-delete-table';
 
 export interface TableNodeContextMenuProps {
     table: DBTable;
@@ -21,7 +22,8 @@ export interface TableNodeContextMenuProps {
 export const TableNodeContextMenu: React.FC<
     React.PropsWithChildren<TableNodeContextMenuProps>
 > = ({ children, table }) => {
-    const { removeTable, readonly, createTable } = useChartDB();
+    const { readonly, createTable } = useChartDB();
+    const deleteTable = useDeleteTable();
     const { closeAllTablesInSidebar } = useLayout();
     const { t } = useTranslation();
     const { isMd: isDesktop } = useBreakpoint('md');
@@ -60,9 +62,9 @@ export const TableNodeContextMenu: React.FC<
         useCallback(
             (e) => {
                 e.stopPropagation();
-                removeTable(table.id);
+                void deleteTable(table.id);
             },
-            [removeTable, table.id]
+            [deleteTable, table.id]
         );
 
     const addRelationshipHandler: React.MouseEventHandler<HTMLDivElement> =

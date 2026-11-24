@@ -27,6 +27,8 @@ import {
     importDBMLToDiagram,
 } from '@/lib/dbml/dbml-import/dbml-import';
 import type { ImportMethod } from '@/lib/import-method/import-method';
+import { isApiConfigured } from '@/lib/api/http-client';
+import { CreateProjetForm } from './create-projet-form/create-projet-form';
 
 export interface CreateDiagramDialogProps extends BaseDialogProps {}
 
@@ -53,6 +55,9 @@ export const CreateDiagramDialog: React.FC<CreateDiagramDialogProps> = ({
     const navigate = useNavigate();
     const [parsedMetadata, setParsedMetadata] = useState<DatabaseMetadata>();
     const [isParsingMetadata, setIsParsingMetadata] = useState(false);
+    const [isCreatingProjet, setIsCreatingProjet] = useState(false);
+    // Mode API : formulaire de création de projet à la place des étapes ChartDB.
+    const apiMode = isApiConfigured();
 
     useEffect(() => {
         setDatabaseEdition(undefined);
@@ -220,8 +225,8 @@ export const CreateDiagramDialog: React.FC<CreateDiagramDialogProps> = ({
         <Dialog
             {...dialog}
             onOpenChange={(open) => {
-                // Don't allow closing while parsing metadata
-                if (isParsingMetadata) {
+                // Don't allow closing while parsing metadata or creating a project
+                if (isParsingMetadata || isCreatingProjet) {
                     return;
                 }
 
@@ -240,7 +245,12 @@ export const CreateDiagramDialog: React.FC<CreateDiagramDialogProps> = ({
                 onInteractOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
             >
-                {step === CreateDiagramDialogStep.SELECT_DATABASE ? (
+                {apiMode ? (
+                    <CreateProjetForm
+                        hasExistingDiagram={hasExistingDiagram}
+                        onBusyChange={setIsCreatingProjet}
+                    />
+                ) : step === CreateDiagramDialogStep.SELECT_DATABASE ? (
                     <SelectDatabase
                         createNewDiagram={createEmptyDiagram}
                         databaseType={databaseType}

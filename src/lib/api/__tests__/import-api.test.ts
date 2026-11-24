@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const env = vi.hoisted(() => ({
     API_URL: 'http://api.test/',
     USER_ID: '42',
-    PROJECT_ID: '',
 }));
 
 vi.mock('@/lib/env', () => env);
@@ -219,7 +218,6 @@ describe('postImport', () => {
     beforeEach(() => {
         env.API_URL = 'http://api.test/';
         env.USER_ID = '42';
-        env.PROJECT_ID = '';
         fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
     });
@@ -227,22 +225,13 @@ describe('postImport', () => {
         vi.unstubAllGlobals();
     });
 
-    it("encode l'id du projet (espace → %20) dans l'URL exacte", async () => {
+    it("utilise l'id du diagramme tel quel (espace → %20) dans l'URL exacte", async () => {
         fetchMock.mockResolvedValue(jsonResponse({}, 201));
-        env.PROJECT_ID = 'mon projet';
 
-        await postImport('diagram-courant', makeRequest());
+        await postImport('mon projet', makeRequest());
 
         expect(fetchMock.mock.calls[0][0]).toBe(
             'http://api.test/api/projets/mon%20projet/import'
-        );
-    });
-
-    it("se replie sur l'id du diagramme sans PROJECT_ID", async () => {
-        fetchMock.mockResolvedValue(jsonResponse({}, 201));
-        await postImport('abc', makeRequest());
-        expect(fetchMock.mock.calls[0][0]).toBe(
-            'http://api.test/api/projets/abc/import'
         );
     });
 

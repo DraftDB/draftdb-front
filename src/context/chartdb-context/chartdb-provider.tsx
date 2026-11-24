@@ -39,9 +39,16 @@ import {
     getUniqueTableName,
 } from '@/lib/domain/table-name';
 import { isApiConfigured } from '@/lib/api/http-client';
-import { describeTableApiError, postTable } from '@/lib/api/tables-api';
+import {
+    deleteTable,
+    describeTableApiError,
+    getTableLinksFromConfirmation,
+    isConfirmationRequired,
+    postTable,
+} from '@/lib/api/tables-api';
 import { toast } from '@/components/toast/use-toast';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 
 export interface ChartDBProviderProps {
     diagram?: Diagram;
@@ -523,6 +530,83 @@ export const ChartDBProvider: React.FC<
         },
         [removeTables]
     );
+
+    // Un seul parcours de suppression à la fois (double-clic, Suppr répété).
+    const isDeletingTableRef = useRef(false);
+
+    const deleteTableWithApi: ChartDBContext['deleteTableWithApi'] =
+        useCallback(
+            async (id, confirm) => {
+                const table = getTable(id);
+                if (!table || isDeletingTableRef.current) {
+                    return 'cancelled';
+                }
+                isDeletingTableRef.current = true;
+
+                const notifyError = (error: unknown) => {
+                    const description = describeTableApiError(error, 'delete');
+                    toast({
+                        variant: 'destructive',
+                        title: i18n.t(description.titleKey),
+                        description:
+                            description.serverMessage ??
+                            i18n.t(description.descriptionKey),
+                    });
+                };
+
+                try {
+                    let deletedByFirstCall = false;
+
+                    // 1er appel, sans confirmation : le serveur n'écrit rien.
+                    try {
+                        await deleteTable(diagramId, id, {
+                            confirmation: false,
+                        });
+                        // Garde-fou : un 2xx tient lieu d'accord du serveur.
+                        deletedByFirstCall = true;
+                    } catch (error) {
+                        if (!isConfirmationRequired(error)) {
+                            notifyError(error);
+                            return 'error';
+                        }
+                        const links = getTableLinksFromConfirmation(error);
+                        if (!links) {
+                            // 409 sans liste exploitable : réponse inattendue.
+                            notifyError(error);
+                            return 'error';
+                        }
+                        const confirmed = await confirm(table, links);
+                        if (!confirmed) {
+                            return 'cancelled';
+                        }
+                    }
+
+                    // 2e appel, avec confirmation : seul appel qui écrit.
+                    if (!deletedByFirstCall) {
+                        try {
+                            await deleteTable(diagramId, id, {
+                                confirmation: true,
+                            });
+                        } catch (error) {
+                            // Aucun traitement à part, 404 compris : la table
+                            // reste dans le diagramme.
+                            notifyError(error);
+                            return 'error';
+                        }
+                    }
+
+                    // Retrait local seulement après l'accord du serveur, sans
+                    // undo (aucune route ne restaure une table). Les relations
+                    // et dépendances liées partent avec la table via
+                    // removeTables : voir RG-13, CU 2.4 et CU 2.5.
+                    await removeTables([id], { updateHistory: false });
+                    return 'deleted';
+                } finally {
+                    isDeletingTableRef.current = false;
+                }
+            },
+            [diagramId, getTable, removeTables]
+        );
 
     const updateTable: ChartDBContext['updateTable'] = useCallback(
         async (
@@ -2181,6 +2265,7 @@ export const ChartDBProvider: React.FC<
                 getTable,
                 removeTable,
                 removeTables,
+                deleteTableWithApi,
                 updateTable,
                 updateTablesState,
                 updateField,
