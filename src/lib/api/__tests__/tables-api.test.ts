@@ -12,8 +12,11 @@ import type { DBTable } from '@/lib/domain/db-table';
 import type { DBIndex } from '@/lib/domain/db-index';
 import { ApiError } from '../http-client';
 import {
+    deleteTable,
     describeTableApiError,
     getTableApiErrorKind,
+    getTableLinksFromConfirmation,
+    isConfirmationRequired,
     postTable,
     toTableBody,
 } from '../tables-api';
@@ -409,6 +412,264 @@ describe('describeTableApiError', () => {
         const description = describeTableApiError(new Error('boom'));
         expect(description.kind).toBe('unknown');
         expect(description.descriptionKey).toBe('api_errors.table.unknown');
+        expect(description.serverMessage).toBeUndefined();
+    });
+});
+
+const TABLE_ID = 'cm1abcdefghijklmnopqrstuv';
+
+const fk = {
+    id: 'r1',
+    name: 'fk_orders_users',
+    sourceTableId: 'orders',
+    targetTableId: 'users',
+    sourceFieldId: 'f1',
+    targetFieldId: 'f2',
+};
+
+const confirmationBody = (detail: Record<string, unknown> = {}) => ({
+    detail: { code: 'CONFIRMATION_REQUISE', ...detail },
+});
+
+const confirmationError = (details: unknown) =>
+    new ApiError({
+        status: 409,
+        code: 'CONFIRMATION_REQUISE',
+        message: 'x',
+        details,
+    });
+
+describe('deleteTable', () => {
+    const fetchMock = vi.fn();
+
+    beforeEach(() => {
+        mockEnv.API_URL = 'http://api.test/';
+        mockEnv.USER_ID = '42';
+        mockEnv.PROJECT_ID = '';
+        localStorage.clear();
+        fetchMock.mockReset();
+        vi.stubGlobal('fetch', fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('1er appel : DELETE confirme_suppression=false, sans corps, X-User-Id ; le vrai 409 est reconnu', async () => {
+        const body = confirmationBody({
+            cles_etrangeres: [fk],
+            index: [{ id: 'i1', name: 'idx_orders' }],
+        });
+        fetchMock.mockResolvedValue(jsonResponse(body, 409));
+
+        const error = await rejection(
+            deleteTable('proj 1', TABLE_ID, { confirmation: false })
+        );
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe(
+            `http://api.test/api/projets/proj%201/tables/${TABLE_ID}?confirme_suppression=false`
+        );
+        expect(init.method).toBe('DELETE');
+        expect(init.body).toBeUndefined();
+        expect(init.headers['X-User-Id']).toBe('42');
+        // L'erreur vient de apiRequest : ApiError.code est lu depuis detail.code.
+        expect(error.status).toBe(409);
+        expect(error.code).toBe('CONFIRMATION_REQUISE');
+        expect(isConfirmationRequired(error)).toBe(true);
+        expect(getTableLinksFromConfirmation(error)).toEqual({
+            cles_etrangeres: [fk],
+            index: [{ id: 'i1', name: 'idx_orders' }],
+        });
+    });
+
+    it('2e appel : confirme_suppression=true, renvoie { id_table, numero_sequence } tel quel', async () => {
+        const response = { id_table: TABLE_ID, numero_sequence: 12 };
+        fetchMock.mockResolvedValue(jsonResponse(response));
+
+        const result = await deleteTable('proj 1', TABLE_ID, {
+            confirmation: true,
+        });
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe(
+            `http://api.test/api/projets/proj%201/tables/${TABLE_ID}?confirme_suppression=true`
+        );
+        expect(init.method).toBe('DELETE');
+        expect(init.body).toBeUndefined();
+        expect(result).toEqual(response);
+    });
+
+    it('un 409 sans code n’est pas une demande de confirmation', async () => {
+        fetchMock.mockResolvedValue(jsonResponse({ detail: 'Conflit' }, 409));
+        const error = await rejection(
+            deleteTable('p', TABLE_ID, { confirmation: false })
+        );
+        expect(isConfirmationRequired(error)).toBe(false);
+    });
+});
+
+describe('isConfirmationRequired', () => {
+    it('409 avec le code → vrai', () => {
+        expect(isConfirmationRequired(confirmationError({}))).toBe(true);
+    });
+
+    it.each([
+        ['409 sans code', new ApiError({ status: 409, message: 'x' })],
+        [
+            '422 avec ce code',
+            new ApiError({
+                status: 422,
+                code: 'CONFIRMATION_REQUISE',
+                message: 'x',
+            }),
+        ],
+        ['Error ordinaire', new Error('boom')],
+    ])('%s → faux', (_label, error) => {
+        expect(isConfirmationRequired(error)).toBe(false);
+    });
+});
+
+describe('getTableLinksFromConfirmation', () => {
+    it('format réel : renvoie les liens exacts', () => {
+        const index = [{ id: 'i1', name: 'idx_orders' }];
+        expect(
+            getTableLinksFromConfirmation(
+                confirmationError(
+                    confirmationBody({ cles_etrangeres: [fk], index })
+                )
+            )
+        ).toEqual({ cles_etrangeres: [fk], index });
+    });
+
+    it('deux listes vides → liens vides, pas null', () => {
+        expect(
+            getTableLinksFromConfirmation(
+                confirmationError(
+                    confirmationBody({ cles_etrangeres: [], index: [] })
+                )
+            )
+        ).toEqual({ cles_etrangeres: [], index: [] });
+    });
+
+    it('un seul tableau présent : l’autre est complété par []', () => {
+        expect(
+            getTableLinksFromConfirmation(
+                confirmationError(confirmationBody({ cles_etrangeres: [fk] }))
+            )
+        ).toEqual({ cles_etrangeres: [fk], index: [] });
+        expect(
+            getTableLinksFromConfirmation(
+                confirmationError(
+                    confirmationBody({ index: [{ id: 'i', name: 'n' }] })
+                )
+            )
+        ).toEqual({ cles_etrangeres: [], index: [{ id: 'i', name: 'n' }] });
+    });
+
+    it('ne garde que les objets des tableaux', () => {
+        expect(
+            getTableLinksFromConfirmation(
+                confirmationError(
+                    confirmationBody({
+                        cles_etrangeres: [fk, 'x', null, 3],
+                        index: [],
+                    })
+                )
+            )
+        ).toEqual({ cles_etrangeres: [fk], index: [] });
+    });
+
+    it('aucun tableau → null', () => {
+        expect(
+            getTableLinksFromConfirmation(confirmationError(confirmationBody()))
+        ).toBeNull();
+    });
+
+    it('403 → null, même avec des listes', () => {
+        expect(
+            getTableLinksFromConfirmation(
+                new ApiError({
+                    status: 403,
+                    message: 'x',
+                    details: confirmationBody({ cles_etrangeres: [fk] }),
+                })
+            )
+        ).toBeNull();
+    });
+
+    it('details ou detail qui ne sont pas des objets → null', () => {
+        expect(
+            getTableLinksFromConfirmation(confirmationError('texte'))
+        ).toBeNull();
+        expect(
+            getTableLinksFromConfirmation(confirmationError({ detail: 'x' }))
+        ).toBeNull();
+    });
+
+    it.each([
+        ['{ liens }', { liens: [fk] }],
+        ['{ detail: { liens } }', { detail: { liens: [fk] } }],
+        ['tableau à la racine', [fk]],
+        ['listes à la racine', { cles_etrangeres: [fk], index: [] }],
+    ])('refuse le format %s', (_label, details) => {
+        expect(
+            getTableLinksFromConfirmation(confirmationError(details))
+        ).toBeNull();
+    });
+});
+
+describe('describeTableApiError (opération delete)', () => {
+    it.each([
+        [0, 'network'],
+        [401, 'unauthenticated'],
+        [403, 'forbidden'],
+        [404, 'not_found'],
+        [422, 'validation'],
+        [500, 'unknown'],
+    ])('statut %i → %s', (status, kind) => {
+        const description = describeTableApiError(
+            new ApiError({ status, message: 'x' }),
+            'delete'
+        );
+        expect(description.kind).toBe(kind);
+        expect(description.titleKey).toBe('api_errors.table_delete.title');
+        expect(description.descriptionKey).toBe(
+            `api_errors.table_delete.${kind}`
+        );
+    });
+
+    it('422 : serverMessage reprend le texte du serveur', () => {
+        const description = describeTableApiError(
+            new ApiError({
+                status: 422,
+                message: 'x',
+                details: {
+                    detail: [
+                        {
+                            msg: 'String should have at most 25 characters',
+                            loc: ['path', 'id_table'],
+                        },
+                    ],
+                },
+            }),
+            'delete'
+        );
+        expect(description.kind).toBe('validation');
+        expect(description.serverMessage).toBe(
+            'String should have at most 25 characters (path.id_table)'
+        );
+    });
+
+    it('403 : pas de serverMessage', () => {
+        const description = describeTableApiError(
+            new ApiError({
+                status: 403,
+                message: 'x',
+                details: { detail: 'Seul un concepteur du projet…' },
+            }),
+            'delete'
+        );
         expect(description.serverMessage).toBeUndefined();
     });
 });
