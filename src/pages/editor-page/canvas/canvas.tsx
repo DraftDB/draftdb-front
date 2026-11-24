@@ -10,6 +10,7 @@ import type {
     NodePositionChange,
     NodeRemoveChange,
     NodeDimensionChange,
+    OnBeforeDelete,
     OnEdgesChange,
     OnNodesChange,
     NodeTypes,
@@ -122,6 +123,8 @@ import { filterTable } from '@/lib/domain/diagram-filter/filter';
 import { defaultSchemas } from '@/lib/data/default-schemas';
 import { useDiff } from '@/context/diff-context/use-diff';
 import { useClickAway } from 'react-use';
+import { isApiConfigured } from '@/lib/api/http-client';
+import { useDeleteTable } from '@/hooks/use-delete-table';
 
 const HIGHLIGHTED_EDGE_Z_INDEX = 1;
 const DEFAULT_EDGE_Z_INDEX = 0;
@@ -1025,6 +1028,53 @@ export const Canvas: React.FC<CanvasProps> = ({ initialTables }) => {
         [getNode]
     );
 
+    const deleteTable = useDeleteTable();
+
+    // Touche Suppr / Retour arrière. En mode API, les tables ne passent pas par
+    // les changements `remove` de React Flow (updateTablesState, sans accord du
+    // serveur) : elles sont retirées de la sélection et supprimées via
+    // useDeleteTable, l'une après l'autre. Les relations qui touchent ces tables
+    // sont retirées de la sélection aussi : elles partent avec la table, après
+    // l'accord du serveur (RG-13, CU 2.4 et CU 2.5).
+    const onBeforeDeleteHandler: OnBeforeDelete<NodeType, EdgeType> =
+        useCallback(
+            async ({ nodes: nodesToDelete, edges: edgesToDelete }) => {
+                if (readonly) {
+                    return false;
+                }
+                if (!isApiConfigured()) {
+                    return true;
+                }
+
+                const tableIds = nodesToDelete
+                    .filter((node) => node.type === 'table')
+                    .map((node) => node.id);
+                if (tableIds.length === 0) {
+                    return true;
+                }
+
+                // Sans attendre : la boîte de confirmation ne doit pas bloquer
+                // la suppression du reste de la sélection.
+                void (async () => {
+                    for (const tableId of tableIds) {
+                        await deleteTable(tableId);
+                    }
+                })();
+
+                return {
+                    nodes: nodesToDelete.filter(
+                        (node) => !tableIds.includes(node.id)
+                    ),
+                    edges: edgesToDelete.filter(
+                        (edge) =>
+                            !tableIds.includes(edge.source) &&
+                            !tableIds.includes(edge.target)
+                    ),
+                };
+            },
+            [readonly, deleteTable]
+        );
+
     const onNodesChangeHandler: OnNodesChange<NodeType> = useCallback(
         (changes) => {
             let changesToApply = changes;
@@ -1680,6 +1730,7 @@ export const Canvas: React.FC<CanvasProps> = ({ initialTables }) => {
                     edges={edgesWithFloating}
                     onNodesChange={onNodesChangeHandler}
                     onEdgesChange={onEdgesChangeHandler}
+                    onBeforeDelete={onBeforeDeleteHandler}
                     maxZoom={5}
                     minZoom={0.1}
                     onConnect={onConnectHandler}
