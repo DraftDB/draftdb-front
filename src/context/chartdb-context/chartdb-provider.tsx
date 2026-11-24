@@ -38,7 +38,7 @@ import {
     getDefaultTableName,
     getUniqueTableName,
 } from '@/lib/domain/table-name';
-import { getProjetId, isApiConfigured } from '@/lib/api/http-client';
+import { isApiConfigured } from '@/lib/api/http-client';
 import {
     deleteTable,
     describeTableApiError,
@@ -555,12 +555,11 @@ export const ChartDBProvider: React.FC<
                 };
 
                 try {
-                    const projetId = getProjetId(diagramId);
                     let deletedByFirstCall = false;
 
                     // 1er appel, sans confirmation : le serveur n'écrit rien.
                     try {
-                        await deleteTable(projetId, id, {
+                        await deleteTable(diagramId, id, {
                             confirmation: false,
                         });
                         // Garde-fou : un 2xx tient lieu d'accord du serveur.
@@ -585,7 +584,7 @@ export const ChartDBProvider: React.FC<
                     // 2e appel, avec confirmation : seul appel qui écrit.
                     if (!deletedByFirstCall) {
                         try {
-                            await deleteTable(projetId, id, {
+                            await deleteTable(diagramId, id, {
                                 confirmation: true,
                             });
                         } catch (error) {

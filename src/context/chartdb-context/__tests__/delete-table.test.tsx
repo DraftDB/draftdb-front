@@ -16,11 +16,9 @@ const mocks = vi.hoisted(() => ({
     toast: vi.fn(),
 }));
 
-// getProjetId préfère PROJECT_ID : on le force à '' pour ne pas dépendre d'un .env.
 vi.mock('@/lib/env', () => ({
     API_URL: 'http://api.test',
     USER_ID: '',
-    PROJECT_ID: '',
 }));
 vi.mock('@/lib/api/http-client', async (importOriginal) => ({
     ...(await importOriginal<typeof HttpClient>()),

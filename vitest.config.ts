@@ -10,7 +10,6 @@ export default defineConfig({
         env: {
             VITE_API_URL: '',
             VITE_USER_ID: '',
-            VITE_PROJECT_ID: '',
         },
         setupFiles: './src/test/setup.ts',
         coverage: {

@@ -566,6 +566,25 @@ export const en = {
             },
         },
 
+        new_project_form: {
+            title: 'New project',
+            description:
+                'Name your project. The database dialect is not required.',
+            name_label: 'Name',
+            name_placeholder: 'My project',
+            description_label: 'Description (optional)',
+            description_placeholder: 'What is this project about?',
+            create: 'Create project',
+            creating: 'Creating…',
+            cancel: 'Cancel',
+            errors: {
+                required: 'The name cannot be empty',
+                name_too_long: 'The name cannot exceed {{max}} characters',
+                description_too_long:
+                    'The description cannot exceed {{max}} characters',
+            },
+        },
+
         api_errors: {
             table: {
                 title: 'Unable to add the table',
@@ -596,6 +615,16 @@ export const en = {
                     'The request was refused by the server. Nothing was changed.',
                 network: 'The server is unreachable. Nothing was changed.',
                 unknown: 'An unexpected error occurred. Nothing was changed.',
+            },
+            projet: {
+                title: 'Unable to create the project',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier.',
+                validation: 'The project was rejected by the server',
+                network: 'The server is unreachable. Check your connection.',
+                unknown: 'An unexpected error occurred. Please try again.',
+                local_storage:
+                    'The project was created on the server but could not be saved in this browser. Please try again.',
             },
         },
     },

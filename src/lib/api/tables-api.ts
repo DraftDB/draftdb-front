@@ -1,11 +1,6 @@
 import type { DBTable } from '@/lib/domain/db-table';
 import type { DBIndex } from '@/lib/domain/db-index';
-import {
-    ApiError,
-    apiRequest,
-    getProjetId,
-    getServerMessage,
-} from './http-client';
+import { ApiError, apiRequest, getServerMessage } from './http-client';
 
 /** Longueur maximale d'un nom (table, colonne, index) acceptée par le back. */
 export const MAX_NAME_LENGTH = 63;
@@ -71,12 +66,13 @@ export const toTableBody = (table: DBTable): TableBody => {
     };
 };
 
+/** En mode API, l'id du diagramme est l'id du projet (UUID renvoyé par POST /api/projets). */
 export const postTable = (
     diagramId: string,
     table: DBTable
 ): Promise<PostTableResponse> =>
     apiRequest<PostTableResponse>(
-        `/api/projets/${encodeURIComponent(getProjetId(diagramId))}/tables`,
+        `/api/projets/${encodeURIComponent(diagramId)}/tables`,
         { method: 'POST', body: toTableBody(table) }
     );
 

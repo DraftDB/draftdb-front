@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockEnv = vi.hoisted(() => ({
     API_URL: '',
     USER_ID: '',
-    PROJECT_ID: '',
 }));
 
 vi.mock('@/lib/env', () => mockEnv);
@@ -197,7 +196,6 @@ describe('postTable', () => {
     beforeEach(() => {
         mockEnv.API_URL = 'http://api.test';
         mockEnv.USER_ID = 'user-1';
-        mockEnv.PROJECT_ID = '';
         localStorage.clear();
         fetchMock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
@@ -208,7 +206,6 @@ describe('postTable', () => {
     });
 
     it('envoie un POST sur /api/projets/{id}/tables avec X-User-Id et le corps', async () => {
-        mockEnv.PROJECT_ID = 'proj-uuid';
         fetchMock.mockResolvedValue(
             jsonResponse(
                 { table: makeTable(), numero_sequence: 1, avertissement: null },
@@ -220,7 +217,7 @@ describe('postTable', () => {
         await postTable('diag-1', table);
 
         const [url, init] = fetchMock.mock.calls[0];
-        expect(url).toBe('http://api.test/api/projets/proj-uuid/tables');
+        expect(url).toBe('http://api.test/api/projets/diag-1/tables');
         expect(init.method).toBe('POST');
         expect(init.headers['X-User-Id']).toBe('user-1');
         expect(init.headers['Content-Type']).toBe('application/json');
@@ -228,21 +225,6 @@ describe('postTable', () => {
         expect(sent.id).toBe('t1');
         expect('schema' in sent).toBe(false);
         expect(sent.indexes[0].name).toBe('users_pkey');
-    });
-
-    it('se replie sur l’id du diagramme si PROJECT_ID est vide', async () => {
-        fetchMock.mockResolvedValue(
-            jsonResponse(
-                { table: makeTable(), numero_sequence: 1, avertissement: null },
-                201
-            )
-        );
-
-        await postTable('diag-1', makeTable());
-
-        expect(fetchMock.mock.calls[0][0]).toBe(
-            'http://api.test/api/projets/diag-1/tables'
-        );
     });
 
     it('renvoie { table, numero_sequence, avertissement } avec un avertissement', async () => {
@@ -445,7 +427,6 @@ describe('deleteTable', () => {
     beforeEach(() => {
         mockEnv.API_URL = 'http://api.test/';
         mockEnv.USER_ID = '42';
-        mockEnv.PROJECT_ID = '';
         localStorage.clear();
         fetchMock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
