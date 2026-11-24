@@ -138,6 +138,37 @@ VITE_OPENAI_API_ENDPOINT=http://localhost:8000/v1
 VITE_LLM_MODEL_NAME=Qwen/Qwen2.5-32B-Instruct-AWQ
 ```
 
+## DraftDB : ouvrir un projet (mode API)
+
+Avec `VITE_API_URL` renseigné (mode API), ouvrir `/diagrams/<uuid>` charge le projet
+depuis `GET /api/projets/{id_projet}` (lecture seule, aucune écriture serveur), l'écrit
+dans le stockage du navigateur (IndexedDB) puis l'affiche. Sans `VITE_API_URL`, le
+comportement ChartDB local est inchangé.
+
+Pour tester (back lancé en local) :
+
+1. Démarrer le front en mode API, par exemple `VITE_API_URL=http://localhost:8000 npm run dev`.
+2. Choisir l'identifiant d'un utilisateur dans la console du navigateur
+   (prioritaire sur `VITE_USER_ID`) :
+   `localStorage.setItem('draftdb_user_id', '<uuid utilisateur>')`.
+3. Ouvrir `http://localhost:5173/diagrams/<uuid d'un projet existant>`.
+
+Cas à vérifier :
+
+| Situation                                                                             | Résultat attendu                                                                             |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Utilisateur participant                                                               | Schéma du serveur affiché (ids et ordre des colonnes conservés) ; projet vide : schéma vide  |
+| Copie locale identique au serveur                                                     | Mise à jour silencieuse                                                                      |
+| Copie locale différente (ex. colonne modifiée localement)                             | Dialogue : « Utiliser la version du serveur » ou « Garder ma version locale » (n'écrit rien) |
+| Aucun identifiant (`localStorage.removeItem('draftdb_user_id')`, `VITE_USER_ID` vide) | 401 : toast, retour à l'accueil                                                              |
+| Utilisateur non participant                                                           | 403 : toast, retour à l'accueil                                                              |
+| UUID inexistant                                                                       | 404 : toast, retour à l'accueil                                                              |
+| Back arrêté                                                                           | Toast « serveur injoignable » ; copie locale ouverte si elle existe, sinon accueil           |
+
+Un id qui n'est pas un UUID est ouvert depuis la copie locale, comme dans ChartDB.
+Le dernier `numero_sequence` reçu est conservé dans `localStorage`
+(`draftdb_numero_sequence:<id_projet>`).
+
 ## Try it on our website
 
 1. Go to [ChartDB.io](https://chartdb.io?ref=github_readme_2)
