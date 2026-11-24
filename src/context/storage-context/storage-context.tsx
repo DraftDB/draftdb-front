@@ -25,6 +25,11 @@ export interface StorageContext {
 
     // Diagram operations
     addDiagram: (params: { diagram: Diagram }) => Promise<void>;
+    /**
+     * Remplace atomiquement un diagramme et tous ses éléments (création s'il
+     * n'existe pas). En cas d'échec, rien n'est modifié.
+     */
+    replaceDiagram: (params: { diagram: Diagram }) => Promise<void>;
     listDiagrams: (options?: {
         includeTables?: boolean;
         includeRelationships?: boolean;
@@ -163,6 +168,7 @@ export const storageInitialValue: StorageContext = {
     deleteDiagramFilter: emptyFn,
 
     addDiagram: emptyFn,
+    replaceDiagram: emptyFn,
     listDiagrams: emptyFn,
     getDiagram: emptyFn,
     updateDiagram: emptyFn,
