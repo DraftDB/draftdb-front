@@ -180,6 +180,69 @@ describe('ImportDumpDialog', () => {
             expect(
                 screen.getByRole('button', { name: 'import_dump_dialog.close' })
             ).toBeInTheDocument();
+            expect(
+                screen.queryByText(
+                    'import_dump_dialog.local_update_error_title'
+                )
+            ).toBeNull();
+        });
+
+        it('le dialecte détecté est affiché avec le libellé de databaseTypeToLabelMap', async () => {
+            await openWithFile();
+            expect(screen.getByRole('combobox')).toHaveTextContent('MySQL');
+        });
+    });
+
+    describe('(i) échec de l’affichage local après un 201', () => {
+        it('le serveur a importé : résultat, rapport et message dédié, pas « rien enregistré »', async () => {
+            mocks.updateDiagramDataMock.mockRejectedValueOnce(
+                new Error('dexie')
+            );
+            await openWithFile();
+            await user.click(importButton());
+
+            await screen.findByText('import_dump_dialog.success_title');
+            expect(
+                screen.getByText('import_dump_dialog.local_update_error_title')
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('import_dump_dialog.local_update_error')
+            ).toBeInTheDocument();
+            expect(screen.queryByText('api_errors.import.unknown')).toBeNull();
+            expect(
+                screen.getByText('import_dump_dialog.success_description:5,7')
+            ).toBeInTheDocument();
+            expect(screen.getByText('INSERT')).toBeInTheDocument();
+
+            // Étape done : plus de bouton Importer, aucun renvoi possible.
+            expect(
+                screen.queryByRole('button', {
+                    name: 'import_dump_dialog.import',
+                })
+            ).toBeNull();
+            expect(mocks.postImportMock).toHaveBeenCalledTimes(1);
+            expect(mocks.updateDiagramDataMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('409 puis Remplacer puis échec local : même affichage, deux envois', async () => {
+            mocks.postImportMock.mockRejectedValueOnce(conflict(4));
+            mocks.updateDiagramDataMock.mockRejectedValueOnce(
+                new Error('dexie')
+            );
+            await openWithFile();
+            await user.click(importButton());
+            await screen.findByText('import_dump_dialog.confirm_description:4');
+
+            await user.click(button('replace'));
+
+            await screen.findByText(
+                'import_dump_dialog.local_update_error_title'
+            );
+            expect(
+                screen.getByText('import_dump_dialog.success_title')
+            ).toBeInTheDocument();
+            expect(screen.queryByText('api_errors.import.unknown')).toBeNull();
+            expect(mocks.postImportMock).toHaveBeenCalledTimes(2);
         });
     });
 

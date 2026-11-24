@@ -599,6 +599,10 @@ export const en = {
             report_reason: 'Reason',
             report_truncated:
                 'Showing the first {{shown}} of {{total}} entries.',
+            local_update_error_title:
+                'Imported on the server, not displayed here',
+            local_update_error:
+                'The dump was saved on the server, but the diagram could not be refreshed in this window. Reload the page to display the imported schema; do not import the file again.',
         },
 
         api_errors: {

@@ -31,6 +31,7 @@ import {
     TableRow,
 } from '@/components/table/table';
 import { cn } from '@/lib/utils';
+import { databaseTypeToLabelMap } from '@/lib/databases';
 import type { Diagram } from '@/lib/domain/diagram';
 import { detectDatabaseType, sqlImportToDiagram } from '@/lib/data/sql-import';
 import {
@@ -68,6 +69,9 @@ type DialogError =
 /** Nombre maximal d'entrées du rapport affichées. */
 export const MAX_REPORT_ROWS = 200;
 
+/** Dialectes proposés dans le Select, libellés via databaseTypeToLabelMap. */
+const DIALECTES = ['postgresql', 'mysql'] as const satisfies ImportDialecte[];
+
 /** Longueur maximale du nom de fichier transmis (fichier.nom). */
 const MAX_FILE_NAME_LENGTH = 255;
 
@@ -93,6 +97,8 @@ export const ImportDumpDialog: React.FC<ImportDumpDialogProps> = ({
     const [result, setResult] = useState<ImportDumpResponse | null>(null);
     const [report, setReport] = useState<InstructionNonReprise[]>([]);
     const [sending, setSending] = useState(false);
+    // Vrai si le serveur a importé (201) mais que l'affichage local a échoué.
+    const [localUpdateFailed, setLocalUpdateFailed] = useState(false);
 
     // Anti double envoi : le ref est synchrone, le state ne sert qu'à l'affichage.
     const sendingRef = useRef(false);
@@ -114,6 +120,7 @@ export const ImportDumpDialog: React.FC<ImportDumpDialogProps> = ({
         setResult(null);
         setReport([]);
         setSending(false);
+        setLocalUpdateFailed(false);
     }, [dialog.open]);
 
     const handleFilesChange = useCallback((files: File[]) => {
@@ -155,25 +162,14 @@ export const ImportDumpDialog: React.FC<ImportDumpDialogProps> = ({
     }, []);
 
     // Envoie la requête ; le schéma local n'est remplacé QU'APRÈS le 201.
+    // Deux étapes distinctes : une erreur de l'affichage local ne doit jamais
+    // être présentée comme une erreur du serveur (« rien n'a été enregistré »).
     const post = useCallback(
         async ({ request, diagram }: Attempt) => {
+            // Étape 1 : le serveur. Seule cette étape affiche api_errors.import.*
+            let response: ImportDumpResponse;
             try {
-                const response = await postImport(diagramId, request);
-                await updateDiagramData({
-                    ...currentDiagram,
-                    databaseType: diagram.databaseType,
-                    tables: diagram.tables ?? [],
-                    relationships: diagram.relationships ?? [],
-                    dependencies: diagram.dependencies ?? [],
-                    areas: diagram.areas ?? [],
-                    customTypes: diagram.customTypes ?? [],
-                    notes: diagram.notes ?? [],
-                    updatedAt: new Date(),
-                });
-                attemptRef.current = null;
-                setReport(request.rapport.non_repris);
-                setResult(response);
-                setStep('done');
+                response = await postImport(diagramId, request);
             } catch (e) {
                 // Un 409 n'a rien écrit : la même requête est renvoyée après
                 // confirmation. Au second envoi, c'est une erreur ordinaire.
@@ -195,7 +191,32 @@ export const ImportDumpDialog: React.FC<ImportDumpDialogProps> = ({
                     description: describeImportApiError(e),
                 });
                 setStep('select');
+                return;
             }
+
+            // Étape 2 : le serveur a importé. Plus de renvoi possible ; le
+            // résultat et le rapport sont affichés quoi qu'il arrive en local.
+            attemptRef.current = null;
+            setReport(request.rapport.non_repris);
+            setResult(response);
+            let localFailed = false;
+            try {
+                await updateDiagramData({
+                    ...currentDiagram,
+                    databaseType: diagram.databaseType,
+                    tables: diagram.tables ?? [],
+                    relationships: diagram.relationships ?? [],
+                    dependencies: diagram.dependencies ?? [],
+                    areas: diagram.areas ?? [],
+                    customTypes: diagram.customTypes ?? [],
+                    notes: diagram.notes ?? [],
+                    updatedAt: new Date(),
+                });
+            } catch {
+                localFailed = true;
+            }
+            setLocalUpdateFailed(localFailed);
+            setStep('done');
         },
         [diagramId, currentDiagram, updateDiagramData]
     );
@@ -367,10 +388,17 @@ export const ImportDumpDialog: React.FC<ImportDumpDialogProps> = ({
                                     />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="postgresql">
-                                        PostgreSQL
-                                    </SelectItem>
-                                    <SelectItem value="mysql">MySQL</SelectItem>
+                                    {DIALECTES.map((value) => (
+                                        <SelectItem key={value} value={value}>
+                                            {
+                                                databaseTypeToLabelMap[
+                                                    dialecteToDatabaseType(
+                                                        value
+                                                    )
+                                                ]
+                                            }
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             {file && sqlText !== null && !dialect ? (
@@ -404,6 +432,21 @@ export const ImportDumpDialog: React.FC<ImportDumpDialogProps> = ({
 
                     {step === 'done' && result ? (
                         <div className="flex flex-col gap-3 p-1">
+                            {localUpdateFailed ? (
+                                <Alert variant="destructive">
+                                    <AlertCircle className="size-4" />
+                                    <AlertTitle>
+                                        {t(
+                                            'import_dump_dialog.local_update_error_title'
+                                        )}
+                                    </AlertTitle>
+                                    <AlertDescription>
+                                        {t(
+                                            'import_dump_dialog.local_update_error'
+                                        )}
+                                    </AlertDescription>
+                                </Alert>
+                            ) : null}
                             <div>
                                 <p className="font-medium">
                                     {t('import_dump_dialog.success_title')}

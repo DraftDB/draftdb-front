@@ -610,6 +610,9 @@ export const fr: LanguageTranslation = {
             report_reason: 'Raison',
             report_truncated:
                 'Affichage des {{shown}} premières entrées sur {{total}}.',
+            local_update_error_title: 'Importé sur le serveur, non affiché ici',
+            local_update_error:
+                "Le dump a bien été enregistré sur le serveur, mais le diagramme n'a pas pu être mis à jour dans cette fenêtre. Rechargez la page pour afficher le schéma importé ; inutile de réimporter le fichier.",
         },
 
         api_errors: {
