@@ -580,6 +580,14 @@ export const en = {
             },
             table_delete: {
                 title: 'Could not delete the table',
+                confirm_title: 'Delete table "{{name}}"?',
+                confirm_description:
+                    'The table and its columns will be removed from the schema. The following links are affected:',
+                foreign_keys: 'Foreign keys',
+                indexes: 'Indexes',
+                no_links: 'No foreign key or index is linked to this table.',
+                confirm_action: 'Delete',
+                cancel: 'Cancel',
                 unauthenticated: 'You must be signed in to delete a table.',
                 forbidden:
                     'Only a designer of the project can change the schema.',

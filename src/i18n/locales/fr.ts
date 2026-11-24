@@ -592,6 +592,15 @@ export const fr: LanguageTranslation = {
             },
             table_delete: {
                 title: 'Impossible de supprimer la table',
+                confirm_title: 'Supprimer la table « {{name}} » ?',
+                confirm_description:
+                    'La table et ses colonnes seront retirées du schéma. Liens concernés :',
+                foreign_keys: 'Clés étrangères',
+                indexes: 'Index',
+                no_links:
+                    'Aucune clé étrangère ni aucun index ne touche cette table.',
+                confirm_action: 'Supprimer',
+                cancel: 'Annuler',
                 unauthenticated:
                     'Vous devez être connecté pour supprimer une table.',
                 forbidden:
