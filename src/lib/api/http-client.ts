@@ -1,4 +1,4 @@
-import { API_URL, PROJECT_ID, USER_ID } from '@/lib/env';
+import { API_URL, USER_ID } from '@/lib/env';
 
 export interface ApiErrorInit {
     status: number;
@@ -40,14 +40,6 @@ export const getAuthHeaders = (): Record<string, string> => {
     id = id || (USER_ID ?? '').trim();
     return id ? { 'X-User-Id': id } : {};
 };
-
-/**
- * PROVISOIRE (comme PROJECT_ID) : l'id d'un diagramme ChartDB n'est pas un
- * UUID, le back attend celui d'un projet existant.
- * Source de l'{id_projet} de tous les appels.
- */
-export const getProjetId = (diagramId: string): string =>
-    (PROJECT_ID ?? '').trim() || diagramId;
 
 export interface ApiRequestOptions {
     method?: string;
