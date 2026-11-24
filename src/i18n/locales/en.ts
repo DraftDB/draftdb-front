@@ -578,6 +578,17 @@ export const en = {
                 network: 'The server is unreachable. Check your connection.',
                 unknown: 'An unexpected error occurred. Please try again.',
             },
+            table_delete: {
+                title: 'Could not delete the table',
+                unauthenticated: 'You must be signed in to delete a table.',
+                forbidden:
+                    'Only a designer of the project can change the schema.',
+                not_found: 'Table or project not found. Nothing was changed.',
+                validation:
+                    'The request was refused by the server. Nothing was changed.',
+                network: 'The server is unreachable. Nothing was changed.',
+                unknown: 'An unexpected error occurred. Nothing was changed.',
+            },
         },
     },
 };

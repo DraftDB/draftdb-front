@@ -590,6 +590,19 @@ export const fr: LanguageTranslation = {
                     'Le serveur est injoignable. Vérifiez votre connexion.',
                 unknown: "Une erreur inattendue s'est produite. Réessayez.",
             },
+            table_delete: {
+                title: 'Impossible de supprimer la table',
+                unauthenticated:
+                    'Vous devez être connecté pour supprimer une table.',
+                forbidden:
+                    'Seul un concepteur du projet peut modifier le schéma.',
+                not_found: "Table ou projet introuvable. Rien n'a été modifié.",
+                validation:
+                    "La demande a été refusée par le serveur. Rien n'a été modifié.",
+                network: "Le serveur est injoignable. Rien n'a été modifié.",
+                unknown:
+                    "Une erreur inattendue s'est produite. Rien n'a été modifié.",
+            },
         },
     },
 };
