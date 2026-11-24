@@ -566,6 +566,41 @@ export const en = {
             },
         },
 
+        import_dump_dialog: {
+            menu_item: 'SQL dump (server)',
+            title: 'Import a SQL dump',
+            description:
+                'Choose a .sql file. It is analyzed in your browser: only the resulting schema and a report of the statements that could not be translated are sent to the server, never the file itself.',
+            dialect: 'SQL dialect',
+            dialect_placeholder: 'Choose a dialect',
+            dialect_required:
+                'Choose the dialect of the dump before importing.',
+            parse_error_title: 'Unreadable SQL file',
+            parse_error_description:
+                'The file could not be analyzed. Nothing was sent. Choose another file or check the dialect.',
+            no_tables: 'No table was found in this file. Nothing was sent.',
+            confirm_title: 'Replace the current schema?',
+            confirm_description:
+                'The project already contains {{count}} table(s). Importing replaces them: the previous state is logically deleted and remains in the history.',
+            confirm_description_unknown:
+                'The project already contains a schema. Importing replaces it: the previous state is logically deleted and remains in the history.',
+            replace: 'Replace',
+            cancel: 'Cancel',
+            import: 'Import',
+            close: 'Close',
+            success_title: 'Dump imported',
+            success_description:
+                '{{count}} element(s) created (import no. {{sequence}}).',
+            report_title: 'Statements not imported',
+            report_empty: 'All statements were translated.',
+            report_summary: '{{count}} statement(s) could not be translated.',
+            report_line: 'Line',
+            report_type: 'Type',
+            report_reason: 'Reason',
+            report_truncated:
+                'Showing the first {{shown}} of {{total}} entries.',
+        },
+
         api_errors: {
             table: {
                 title: 'Unable to add the table',
@@ -577,6 +612,21 @@ export const en = {
                 validation: 'The table was rejected by the server',
                 network: 'The server is unreachable. Check your connection.',
                 unknown: 'An unexpected error occurred. Please try again.',
+            },
+            import: {
+                title: 'Unable to import the dump',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier. Nothing was saved.',
+                forbidden: 'Only the project owner can import a dump.',
+                not_found: 'Project not found. Nothing was saved.',
+                too_large:
+                    'The file is too large for the server. Nothing was saved.',
+                validation:
+                    'The server rejected the imported schema. Nothing was saved.',
+                network:
+                    'The server is unreachable. Check your connection. Nothing was saved.',
+                unknown:
+                    'An unexpected error occurred. Nothing was saved. Please try again.',
             },
         },
     },
