@@ -434,6 +434,48 @@ describe('ImportDumpDialog', () => {
         });
     });
 
+    describe('(h bis) pg_dump : lignes client neutralisées avant le parser', () => {
+        it('la clé primaire après un COPY est envoyée, le rapport garde COPY et \\restrict', async () => {
+            const key = 'CleSecreteRestrict42';
+            const pgDump = [
+                `\\restrict ${key}`,
+                'SET statement_timeout = 0;',
+                'CREATE TABLE public.clients (',
+                '    id integer NOT NULL,',
+                '    email text NOT NULL',
+                ');',
+                'COPY public.clients (id, email) FROM stdin;',
+                '1\tmarie.dupont@example.org',
+                '\\.',
+                'ALTER TABLE ONLY public.clients',
+                '    ADD CONSTRAINT clients_pkey PRIMARY KEY (id);',
+                `\\unrestrict ${key}`,
+            ].join('\n');
+            await openWithFile(pgDump);
+            await user.click(importButton());
+            await screen.findByText('import_dump_dialog.success_title');
+
+            const request = sentRequest();
+            expect(request.fichier.dialecte).toBe('postgresql');
+            const local = mocks.updateDiagramDataMock.mock
+                .calls[0][0] as Diagram;
+            const id = local.tables
+                ?.find((t) => t.name === 'clients')
+                ?.fields.find((f) => f.name === 'id');
+            expect(id?.primaryKey).toBe(true);
+            expect(request.diagramme.tables).toEqual(local.tables);
+
+            const types = request.rapport.non_repris.map((e) => e.type);
+            expect(types).toEqual(
+                expect.arrayContaining(['\\RESTRICT', 'COPY', '\\UNRESTRICT'])
+            );
+            expect(types).not.toContain('ALTER TABLE');
+            const json = JSON.stringify(request.rapport);
+            expect(json).not.toContain(key);
+            expect(json).not.toContain('marie');
+        });
+    });
+
     describe('rapport affiché', () => {
         it('limite l’affichage à 200 entrées avec une mention de troncature', async () => {
             const inserts = Array.from(

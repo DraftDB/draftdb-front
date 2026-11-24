@@ -1,8 +1,14 @@
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { DatabaseType } from '@/lib/domain/database-type';
 import type { Diagram } from '@/lib/domain/diagram';
+import { sqlImportToDiagram } from '..';
+import { buildDumpReport, prepareDumpForParser } from '../dump-report';
 import {
+    PG_DUMP_SQL,
+    expectEffect,
     expectEffectOrReported,
     findTable,
+    lineOf,
     type DumpContext,
 } from './dump-report-test-utils';
 
@@ -246,5 +252,98 @@ describe.each<[DumpContext, string[], MatrixCase[]]>([
 ])('matrice contre le vrai parser — %s', (context, setup, cases) => {
     it.each(cases)('$label', async ({ statement, effect }) => {
         await expectEffectOrReported(context, [...setup, ...statement], effect);
+    });
+});
+
+// Données COPY, ligne \. et commandes psql n'ont pas de « ; » : sans
+// préparation, le parser les colle à l'instruction suivante, qui est perdue.
+const COPY_BLOCK = ['COPY u (id, t_id) FROM stdin;', '1\t1', '2\t\\N', '\\.'];
+const PSQL_COMMAND = ['\\connect db'];
+// « FROM STDIN » en majuscules : pas un marqueur pg_dump, reste en texte simple.
+const COPY_BLOCK_PLAIN = [
+    'COPY u (id, t_id) FROM STDIN;',
+    '1\t1',
+    '2\t\\N',
+    '\\.',
+];
+
+describe.each<[DumpContext, string, string[]]>([
+    ['pg-dump', 'après un bloc COPY', COPY_BLOCK],
+    ['pg-plain', 'après un bloc COPY', COPY_BLOCK_PLAIN],
+    ['pg-dump', 'après une commande psql', PSQL_COMMAND],
+    ['pg-plain', 'après une commande psql', PSQL_COMMAND],
+])('matrice contre le vrai parser — %s, %s', (context, _label, prefix) => {
+    it.each(PG_CASES)('$label', async ({ statement, effect }) => {
+        await expectEffectOrReported(
+            context,
+            [...PG_SETUP, ...prefix, ...statement],
+            effect
+        );
+    });
+});
+
+describe('pg_dump : contraintes lues derrière un COPY (plus seulement rapportées)', () => {
+    it.each(
+        PG_CASES.filter((c) =>
+            [
+                'ADD CONSTRAINT PRIMARY KEY',
+                'ADD CONSTRAINT FOREIGN KEY',
+                'ADD CONSTRAINT UNIQUE',
+            ].includes(c.label)
+        )
+    )('$label', async ({ statement, effect }) => {
+        await expectEffect(
+            'pg-dump',
+            [...PG_SETUP, ...COPY_BLOCK, ...statement],
+            effect
+        );
+    });
+});
+
+describe('non-régression : la clé primaire après le dernier COPY', () => {
+    const importPg = (sqlContent: string) =>
+        sqlImportToDiagram({
+            sqlContent,
+            sourceDatabaseType: DatabaseType.POSTGRESQL,
+            targetDatabaseType: DatabaseType.POSTGRESQL,
+        });
+    const idIsPrimaryKey = (d: Diagram): boolean =>
+        findTable(d, 'clients')?.fields.find((f) => f.name === 'id')
+            ?.primaryKey === true;
+
+    it('texte brut : ChartDB perd la clé primaire', async () => {
+        expect(idIsPrimaryKey(await importPg(PG_DUMP_SQL))).toBe(false);
+    });
+
+    it('texte préparé : la clé primaire est lue et absente du rapport', async () => {
+        const diagram = await importPg(
+            prepareDumpForParser(PG_DUMP_SQL, 'postgresql')
+        );
+        expect(idIsPrimaryKey(diagram)).toBe(true);
+        expect(
+            buildDumpReport(PG_DUMP_SQL, 'postgresql').map((e) => e.ligne)
+        ).not.toContain(lineOf(PG_DUMP_SQL, 'ALTER TABLE ONLY'));
+    });
+});
+
+describe('contexte du texte préparé contre le vrai parser', () => {
+    it('marqueur pg_dump seulement dans les données : rien de perdu en silence', async () => {
+        const sql = [
+            'CREATE TABLE t (id integer NOT NULL);',
+            'COPY t (id) FROM STDIN;',
+            'ALTER TABLE ONLY dans les données',
+            '\\.',
+            'CREATE INDEX i ON t (id);',
+            'ALTER TABLE t ADD CONSTRAINT t_pkey PRIMARY KEY (id);',
+        ].join('\n');
+        const diagram = await sqlImportToDiagram({
+            sqlContent: prepareDumpForParser(sql, 'postgresql'),
+            sourceDatabaseType: DatabaseType.POSTGRESQL,
+            targetDatabaseType: DatabaseType.POSTGRESQL,
+        });
+        if (hasPrimaryKey(diagram)) return;
+        expect(
+            buildDumpReport(sql, 'postgresql').map((e) => e.ligne)
+        ).toContain(lineOf(sql, 'ALTER TABLE t ADD CONSTRAINT'));
     });
 });

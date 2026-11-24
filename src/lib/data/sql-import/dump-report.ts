@@ -8,8 +8,10 @@ import { isPgDumpFormat } from './index';
 //
 // Le classement « repris » suit ce que le parser ChartDB LIT réellement (il
 // dépend du dialecte et, en PostgreSQL, du chemin texte simple ou pg_dump), pas
-// ce qu'il devrait lire. Les tests du dossier __tests__ le vérifient contre le
-// vrai sqlImportToDiagram.
+// ce qu'il devrait lire. Le parser lit le texte préparé par
+// prepareDumpForParser ; le rapport est calculé sur le texte original, mais
+// son contexte (chemin pg_dump ou non) est celui du texte préparé. Les tests
+// du dossier __tests__ le vérifient contre le vrai sqlImportToDiagram.
 
 export type DumpDialect = 'mysql' | 'postgresql';
 
@@ -17,12 +19,16 @@ export interface DumpStatement {
     /** Ligne (à partir de 1) du premier caractère significatif. */
     line: number;
     sql: string;
+}
+
+/** Résultat du découpage : instructions et texte sauté comme lignes client. */
+interface DumpScan {
+    statements: DumpStatement[];
     /**
-     * Présent (vrai) quand l'instruction suit des données COPY ou une commande
-     * psql : ces lignes n'ont pas de « ; » et le parser pg_dump les colle à
-     * l'instruction suivante, qui est alors perdue.
+     * Intervalles [début, fin) de caractères sautés comme lignes du client
+     * psql : commandes (\restrict, \connect…), données COPY et ligne \.
      */
-    followsClientData?: true;
+    clientRanges: [number, number][];
 }
 
 export interface DumpReportEntry {
@@ -69,9 +75,16 @@ export function splitDumpStatements(
     sql: string,
     dialect: DumpDialect
 ): DumpStatement[] {
+    return scanDump(sql, dialect).statements;
+}
+
+// Seule implémentation du découpage : splitDumpStatements (rapport) et
+// neutralizePsqlClientLines (texte du parser) en dépendent tous les deux.
+function scanDump(sql: string, dialect: DumpDialect): DumpScan {
     const mysql = dialect === 'mysql';
     const n = sql.length;
     const out: DumpStatement[] = [];
+    const clientRanges: [number, number][] = [];
 
     let i = 0;
     let line = 1;
@@ -79,8 +92,6 @@ export function splitDumpStatements(
     let buf = '';
     let delimiter = ';';
     let inConditional = false;
-    // Vrai entre une commande psql ou des données COPY et l'instruction suivante.
-    let clientDataPending = false;
 
     const eol = (from: number): number => {
         const k = sql.indexOf('\n', from);
@@ -106,12 +117,7 @@ export function splitDumpStatements(
     const flush = (): string => {
         const text = buf.trim();
         if (text !== '') {
-            out.push(
-                clientDataPending
-                    ? { line: startLine, sql: text, followsClientData: true }
-                    : { line: startLine, sql: text }
-            );
-            clientDataPending = false;
+            out.push({ line: startLine, sql: text });
         }
         buf = '';
         startLine = 0;
@@ -119,8 +125,10 @@ export function splitDumpStatements(
         return text;
     };
 
-    // Après « COPY … FROM stdin; » : saute les données jusqu'à la ligne \.
+    // Après « COPY … FROM stdin; » : saute la fin de la ligne COPY et les
+    // données jusqu'à la ligne \. incluse (ou la fin du texte).
     const skipCopyData = (): void => {
+        const start = i;
         let pos = eol(i);
         while (pos < n) {
             const lineStart = pos + 1;
@@ -130,7 +138,7 @@ export function splitDumpStatements(
             if (content === '\\.') break;
         }
         advance(pos);
-        clientDataPending = true;
+        if (pos > start) clientRanges.push([start, pos]);
     };
 
     while (i < n) {
@@ -154,7 +162,7 @@ export function splitDumpStatements(
             if (!mysql && ch === '\\') {
                 const end = eol(i);
                 out.push({ line, sql: sql.slice(i, end).trim() });
-                clientDataPending = true;
+                clientRanges.push([i, end]);
                 advance(end);
                 continue;
             }
@@ -279,7 +287,43 @@ export function splitDumpStatements(
     }
 
     if (startLine !== 0) flush();
-    return out;
+    return { statements: out, clientRanges };
+}
+
+/**
+ * Vide les lignes du client psql que splitDumpStatements saute : commandes
+ * (\restrict, \connect…), fin de la ligne COPY après le « ; », données COPY et
+ * ligne \. . Sans « ; », le parser pg_dump les collerait à l'instruction
+ * suivante, qui serait perdue. Les sauts de ligne sont gardés (les numéros de
+ * ligne restent justes). Un antislash dans une chaîne, un $$…$$ ou un
+ * commentaire n'est pas touché.
+ */
+export function neutralizePsqlClientLines(sql: string): string {
+    const { clientRanges } = scanDump(sql, 'postgresql');
+    if (clientRanges.length === 0) return sql;
+    const parts: string[] = [];
+    let from = 0;
+    for (const [start, end] of clientRanges) {
+        parts.push(sql.slice(from, start));
+        parts.push(sql.slice(start, end).replace(/[^\n]+/g, ''));
+        from = end;
+    }
+    parts.push(sql.slice(from));
+    return parts.join('');
+}
+
+/**
+ * Point UNIQUE de préparation du texte passé au parser ChartDB, partagé par le
+ * dialogue et les tests contre le parser. Le rapport, lui, est calculé sur le
+ * texte original.
+ */
+export function prepareDumpForParser(
+    sql: string,
+    dialect: DumpDialect
+): string {
+    return dialect === 'mysql'
+        ? stripMysqlHashComments(sql)
+        : neutralizePsqlClientLines(sql);
 }
 
 /**
@@ -626,8 +670,6 @@ export const RAISON_PSQL = 'Commande du client psql, sans effet sur le schéma';
 export const RAISON_DELIMITER =
     'Commande du client mysql, sans effet sur le schéma';
 export const RAISON_INCONNUE = 'Instruction non reconnue : non reprise.';
-export const RAISON_APRES_DONNEES =
-    "Instruction placée juste après des données COPY ou une commande psql : l'analyseur ne la lit pas, elle n'est pas reprise.";
 
 const SESSION_SELECT = /^SELECT (?:pg_catalog\.)?(?:set_config|setval)\b/i;
 
@@ -695,23 +737,19 @@ export function buildDumpReport(
 ): DumpReportEntry[] {
     const context: StatementContext = {
         dialect,
-        pgDumpFormat: dialect === 'postgresql' && isPgDumpFormat(sql),
+        // Le chemin du parser se choisit sur le texte qu'il lit (préparé) : un
+        // marqueur pg_dump présent seulement dans des données COPY ne compte pas.
+        pgDumpFormat:
+            dialect === 'postgresql' &&
+            isPgDumpFormat(prepareDumpForParser(sql, dialect)),
     };
     const report: DumpReportEntry[] = [];
     for (const statement of splitDumpStatements(sql, dialect)) {
-        const reprised = isStatementReprised(statement.sql, context);
-        // Le parser pg_dump colle les données COPY et les commandes psql (sans
-        // « ; ») à l'instruction suivante, qu'il ne reconnaît plus : elle est
-        // perdue même si son type est lu. Perte annoncée, jamais silencieuse.
-        const lost =
-            reprised && context.pgDumpFormat && statement.followsClientData;
-        if (reprised && !lost) continue;
+        if (isStatementReprised(statement.sql, context)) continue;
         report.push({
             ligne: statement.line,
             type: getStatementType(statement.sql),
-            raison: lost
-                ? RAISON_APRES_DONNEES
-                : getStatementReason(statement.sql),
+            raison: getStatementReason(statement.sql),
         });
     }
     return report;

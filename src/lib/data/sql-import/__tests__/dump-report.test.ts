@@ -5,14 +5,18 @@ import {
     isStatementReprised,
     MAX_REASON_LENGTH,
     MAX_TYPE_LENGTH,
-    RAISON_APRES_DONNEES,
+    neutralizePsqlClientLines,
+    prepareDumpForParser,
+    RAISON_DONNEES,
     RAISON_PSQL,
     splitDumpStatements,
+    stripMysqlHashComments,
     type StatementContext,
 } from '../dump-report';
 import {
     MYSQL_DUMP_LINES,
     MYSQL_DUMP_SQL,
+    PG_DUMP_LINES,
     PG_DUMP_SQL,
     PG_KEY,
     lineOf,
@@ -125,7 +129,7 @@ describe('splitDumpStatements', () => {
         const out = split(sql, 'postgresql');
         expect(out).toEqual([
             { line: 1, sql: 'COPY t (a) FROM stdin' },
-            { line: 5, sql: 'SELECT 1', followsClientData: true },
+            { line: 5, sql: 'SELECT 1' },
         ]);
     });
 
@@ -136,7 +140,7 @@ describe('splitDumpStatements', () => {
         );
         expect(out).toEqual([
             { line: 1, sql: '\\restrict KEY' },
-            { line: 2, sql: 'SET x = 1', followsClientData: true },
+            { line: 2, sql: 'SET x = 1' },
             { line: 3, sql: '\\unrestrict KEY' },
         ]);
     });
@@ -176,6 +180,114 @@ describe('splitDumpStatements', () => {
             { line: 1, sql: 'SELECT 1' },
             { line: 2, sql: 'SELECT 2' },
         ]);
+    });
+});
+
+describe('neutralizePsqlClientLines', () => {
+    const lines = (sql: string) => sql.split('\n');
+
+    it('vide les données COPY et la ligne \\., garde la ligne COPY et le nombre de lignes', () => {
+        const sql = [
+            'COPY t (a, b) FROM stdin;',
+            '1\tx;y',
+            '2\t\\N',
+            '\\.',
+            'ALTER TABLE ONLY t ADD CONSTRAINT t_pkey PRIMARY KEY (a);',
+        ].join('\n');
+        const out = neutralizePsqlClientLines(sql);
+        expect(lines(out)).toEqual([
+            'COPY t (a, b) FROM stdin;',
+            '',
+            '',
+            '',
+            'ALTER TABLE ONLY t ADD CONSTRAINT t_pkey PRIMARY KEY (a);',
+        ]);
+    });
+
+    it('vide les commandes psql, sans laisser la clé de \\restrict', () => {
+        const sql = [
+            `\\restrict ${PG_KEY}`,
+            'SET x = 1;',
+            '\\connect db',
+            'CREATE TABLE t (id integer);',
+            `\\unrestrict ${PG_KEY}`,
+        ].join('\n');
+        const out = neutralizePsqlClientLines(sql);
+        expect(lines(out)).toEqual([
+            '',
+            'SET x = 1;',
+            '',
+            'CREATE TABLE t (id integer);',
+            '',
+        ]);
+        expect(out).not.toContain(PG_KEY);
+    });
+
+    it('vide la fin de la ligne COPY après le ;', () => {
+        const out = neutralizePsqlClientLines(
+            'COPY t (a) FROM stdin; -- reste\n1\n\\.\nSELECT 1;'
+        );
+        expect(lines(out)).toEqual([
+            'COPY t (a) FROM stdin;',
+            '',
+            '',
+            'SELECT 1;',
+        ]);
+    });
+
+    it('COPY sans \\. (dump tronqué) : tout le reste est vidé', () => {
+        const out = neutralizePsqlClientLines('COPY t (a) FROM stdin;\n1\n2;');
+        expect(lines(out)).toEqual(['COPY t (a) FROM stdin;', '', '']);
+    });
+
+    it('fins de ligne Windows : même nombre de lignes, lignes vidées vides', () => {
+        const sql =
+            '\\restrict K\r\nCOPY t (a) FROM stdin;\r\n1\r\n\\.\r\nSELECT 1;\r\n';
+        const out = neutralizePsqlClientLines(sql);
+        expect(out.split('\n')).toHaveLength(sql.split('\n').length);
+        expect(lines(out)).toEqual([
+            '',
+            // La fin de la ligne COPY (ici le \r) fait partie du bloc sauté.
+            'COPY t (a) FROM stdin;',
+            '',
+            '',
+            'SELECT 1;\r',
+            '',
+        ]);
+    });
+
+    it.each([
+        ['chaîne', "SELECT 'a\n\\b';"],
+        ['dollar-quoting', 'DO $$\nBEGIN\n\\x\nEND $$;'],
+        ['bloc de commentaire', '/*\n\\x\n*/\nSELECT 1;'],
+        ['COPY sans stdin', "COPY t TO '/tmp/x';\nSELECT 1;"],
+    ])('laisse intact un antislash dans : %s', (_label, sql) => {
+        expect(neutralizePsqlClientLines(sql)).toBe(sql);
+    });
+
+    it('sur un pg_dump réaliste, ne vide que les lignes client, à leur place', () => {
+        // Le rapport reste calculé sur l'original : le texte neutralisé n'a
+        // plus de « \. », il n'est fait que pour le parser.
+        const prepared = neutralizePsqlClientLines(PG_DUMP_SQL).split('\n');
+        const copy = PG_DUMP_LINES.findIndex((l) => l.startsWith('COPY'));
+        const end = PG_DUMP_LINES.indexOf('\\.');
+        const blanked = new Set([
+            0,
+            ...Array.from({ length: end - copy }, (_, k) => copy + 1 + k),
+            PG_DUMP_LINES.length - 1,
+        ]);
+        expect(prepared).toEqual(
+            PG_DUMP_LINES.map((l, k) => (blanked.has(k) ? '' : l))
+        );
+    });
+
+    it('prepareDumpForParser : # retirés en MySQL, lignes client vidées en PostgreSQL', () => {
+        expect(prepareDumpForParser(MYSQL_DUMP_SQL, 'mysql')).toBe(
+            stripMysqlHashComments(MYSQL_DUMP_SQL)
+        );
+        expect(prepareDumpForParser(PG_DUMP_SQL, 'postgresql')).toBe(
+            neutralizePsqlClientLines(PG_DUMP_SQL)
+        );
     });
 });
 
@@ -417,8 +529,7 @@ describe('buildDumpReport : pg_dump', () => {
                 'ALTER TABLE',
             ],
             [lineOf(PG_DUMP_SQL, 'COPY'), 'COPY'],
-            // Juste après les données COPY : le parser pg_dump la perd.
-            [lineOf(PG_DUMP_SQL, 'ALTER TABLE ONLY'), 'ALTER TABLE'],
+            // L'ADD CONSTRAINT … PRIMARY KEY qui suit les données est lu.
             [lineOf(PG_DUMP_SQL, 'CREATE UNIQUE INDEX'), 'CREATE UNIQUE INDEX'],
             [lineOf(PG_DUMP_SQL, 'GRANT'), 'GRANT'],
             [lineOf(PG_DUMP_SQL, '\\unrestrict'), '\\UNRESTRICT'],
@@ -430,11 +541,15 @@ describe('buildDumpReport : pg_dump', () => {
         expect(lines).not.toContain(lineOf(PG_DUMP_SQL, 'CREATE TABLE'));
     });
 
-    it('la clé primaire qui suit les données COPY est rapportée (le parser la perd)', () => {
-        const pk = report.find(
-            (e) => e.ligne === lineOf(PG_DUMP_SQL, 'ALTER TABLE ONLY')
-        );
-        expect(pk?.raison).toBe(RAISON_APRES_DONNEES);
+    it("la clé primaire qui suit les données COPY n'est plus rapportée (lue par le parser)", () => {
+        const lines = report.map((e) => e.ligne);
+        expect(lines).not.toContain(lineOf(PG_DUMP_SQL, 'ALTER TABLE ONLY'));
+    });
+
+    it('le COPY garde son entrée de données', () => {
+        const copy = report.find((e) => e.type === 'COPY');
+        expect(copy?.ligne).toBe(lineOf(PG_DUMP_SQL, 'COPY'));
+        expect(copy?.raison).toBe(RAISON_DONNEES);
     });
 
     it("la commande psql a sa propre entrée, le SET qui suit n'est pas avalé", () => {
@@ -456,6 +571,24 @@ describe('buildDumpReport : pg_dump', () => {
         const select = report.find((e) => e.type === 'SELECT');
         const set = report.find((e) => e.type === 'SET');
         expect(select?.raison).toBe(set?.raison);
+    });
+});
+
+describe('buildDumpReport : contexte du texte préparé', () => {
+    it('un marqueur pg_dump présent seulement dans des données COPY ne bascule pas le classement', () => {
+        // « FROM STDIN » en majuscules n'est pas un marqueur pg_dump ; la donnée
+        // « ALTER TABLE ONLY » en est un, mais le parser ne la voit pas.
+        const sql = [
+            'CREATE TABLE t (id integer NOT NULL);',
+            'COPY t (id) FROM STDIN;',
+            'ALTER TABLE ONLY dans les données',
+            '\\.',
+            'CREATE INDEX i ON t (id);',
+            'ALTER TABLE t ADD CONSTRAINT t_pkey PRIMARY KEY (id);',
+        ].join('\n');
+        // Le parser lit le texte simple : la clé primaire n'y est pas lue.
+        const lines = buildDumpReport(sql, 'postgresql').map((e) => e.ligne);
+        expect(lines).toContain(lineOf(sql, 'ALTER TABLE t ADD CONSTRAINT'));
     });
 });
 

@@ -4,6 +4,7 @@ import type { Diagram } from '@/lib/domain/diagram';
 import { isPgDumpFormat, sqlImportToDiagram } from '..';
 import {
     buildDumpReport,
+    prepareDumpForParser,
     splitDumpStatements,
     type DumpDialect,
 } from '../dump-report';
@@ -31,12 +32,16 @@ export const buildDump = (context: DumpContext, lines: string[]): string => {
     return sql;
 };
 
+/**
+ * Import comme dans le dialogue : le parser lit le texte préparé par
+ * prepareDumpForParser, le point unique de préparation.
+ */
 export const importDump = (
     context: DumpContext,
     sql: string
 ): Promise<Diagram> =>
     sqlImportToDiagram({
-        sqlContent: sql,
+        sqlContent: prepareDumpForParser(sql, dialectOf(context)),
         sourceDatabaseType: databaseTypeOf(context),
         targetDatabaseType: databaseTypeOf(context),
     });
@@ -73,6 +78,30 @@ export const expectEffectOrReported = async (
         `perte silencieuse : « ${last.sql.slice(0, 80)} » (ligne ${last.line}) ` +
             "n'a aucun effet dans le diagramme et n'est pas dans le rapport"
     ).toContain(last.line);
+};
+
+/**
+ * Plus strict : l'effet attendu de la dernière instruction est présent ET
+ * cette instruction n'est pas dans le rapport (elle est réellement reprise).
+ */
+export const expectEffect = async (
+    context: DumpContext,
+    lines: string[],
+    hasEffect: (diagram: Diagram) => boolean
+): Promise<void> => {
+    const sql = buildDump(context, lines);
+    const dialect = dialectOf(context);
+    const diagram = await importDump(context, sql);
+    const statements = splitDumpStatements(sql, dialect);
+    const last = statements[statements.length - 1];
+
+    expect(
+        hasEffect(diagram),
+        `« ${last.sql.slice(0, 80)} » (ligne ${last.line}) n'a aucun effet dans le diagramme`
+    ).toBe(true);
+    expect(buildDumpReport(sql, dialect).map((e) => e.ligne)).not.toContain(
+        last.line
+    );
 };
 
 export const findTable = (diagram: Diagram, name: string) =>

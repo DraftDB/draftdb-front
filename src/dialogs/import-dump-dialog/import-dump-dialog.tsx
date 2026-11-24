@@ -35,7 +35,7 @@ import type { Diagram } from '@/lib/domain/diagram';
 import { detectDatabaseType, sqlImportToDiagram } from '@/lib/data/sql-import';
 import {
     buildDumpReport,
-    stripMysqlHashComments,
+    prepareDumpForParser,
 } from '@/lib/data/sql-import/dump-report';
 import type {
     ImportApiErrorDescription,
@@ -209,10 +209,9 @@ export const ImportDumpDialog: React.FC<ImportDumpDialogProps> = ({
             let parsed: Diagram;
             try {
                 parsed = await sqlImportToDiagram({
-                    sqlContent:
-                        dialect === 'mysql'
-                            ? stripMysqlHashComments(sqlText)
-                            : sqlText,
+                    // Texte préparé (# MySQL, lignes client psql) ; le rapport
+                    // reste calculé sur le texte original.
+                    sqlContent: prepareDumpForParser(sqlText, dialect),
                     sourceDatabaseType: databaseType,
                     targetDatabaseType: databaseType,
                 });

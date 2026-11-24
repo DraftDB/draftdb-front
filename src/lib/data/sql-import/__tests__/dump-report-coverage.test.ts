@@ -1,6 +1,7 @@
 import { describe, it } from 'vitest';
 import {
     PG_DUMP_LINES,
+    expectEffect,
     expectEffectOrReported,
     findTable,
     type DumpContext,
@@ -109,9 +110,9 @@ describe('instruction qui suit une commande psql ou un COPY vide', () => {
         findTable(d, 'x') !== undefined;
 
     it.each<DumpContext>(['pg-plain', 'pg-dump'])(
-        'CREATE TABLE juste après \\connect — %s',
+        'CREATE TABLE juste après \\connect est lu — %s',
         async (context) => {
-            await expectEffectOrReported(
+            await expectEffect(
                 context,
                 ['\\connect db', 'CREATE TABLE x (id integer);'],
                 tableX
@@ -119,8 +120,8 @@ describe('instruction qui suit une commande psql ou un COPY vide', () => {
         }
     );
 
-    it('clé primaire juste après un COPY sans donnée (pg_dump)', async () => {
-        await expectEffectOrReported(
+    it('clé primaire juste après un COPY sans donnée : lue (pg_dump)', async () => {
+        await expectEffect(
             'pg-dump',
             [
                 ...PG_SETUP,
@@ -136,13 +137,13 @@ describe('instruction qui suit une commande psql ou un COPY vide', () => {
 });
 
 describe('instruction qui suit un bloc COPY (pg_dump)', () => {
-    it('la clé primaire ajoutée juste après les données est reprise ou rapportée', async () => {
+    it('la clé primaire ajoutée juste après les données est lue', async () => {
         // Dump réaliste coupé juste après ADD CONSTRAINT PRIMARY KEY, qui suit
         // directement le bloc COPY (données et ligne \.).
         const end = PG_DUMP_LINES.findIndex((l) =>
             l.startsWith('CREATE UNIQUE INDEX')
         );
-        await expectEffectOrReported(
+        await expectEffect(
             'pg-dump',
             PG_DUMP_LINES.slice(0, end),
             (d) =>
