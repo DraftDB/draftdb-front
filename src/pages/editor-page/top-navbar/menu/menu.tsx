@@ -28,6 +28,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useLocalConfig } from '@/hooks/use-local-config';
 import { useNavigate } from 'react-router-dom';
 import { useAlert } from '@/context/alert-context/alert-context';
+import { isApiConfigured } from '@/lib/api/http-client';
 
 export interface MenuProps {}
 
@@ -46,6 +47,7 @@ export const Menu: React.FC<MenuProps> = () => {
         openExportImageDialog,
         openExportDiagramDialog,
         openImportDiagramDialog,
+        openImportDumpDialog,
     } = useDialog();
     const { showAlert } = useAlert();
     const { setTheme, theme } = useTheme();
@@ -207,6 +209,14 @@ export const Menu: React.FC<MenuProps> = () => {
                             >
                                 DBML
                             </MenubarItem>
+                            {isApiConfigured() ? (
+                                <>
+                                    <MenubarSeparator />
+                                    <MenubarItem onClick={openImportDumpDialog}>
+                                        {t('import_dump_dialog.menu_item')}
+                                    </MenubarItem>
+                                </>
+                            ) : null}
                         </MenubarSubContent>
                     </MenubarSub>
                     <MenubarSeparator />

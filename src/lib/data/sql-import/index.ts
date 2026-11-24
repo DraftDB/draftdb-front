@@ -17,7 +17,7 @@ import { getTableIndexesWithPrimaryKey } from '@/lib/domain/db-index';
  * @param sqlContent SQL content as string
  * @returns boolean indicating if the SQL is likely from pg_dump
  */
-function isPgDumpFormat(sqlContent: string): boolean {
+export function isPgDumpFormat(sqlContent: string): boolean {
     // pg_dump output often contains specific markers
     const pgDumpMarkers = [
         'SET statement_timeout',

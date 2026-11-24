@@ -576,6 +576,45 @@ export const fr: LanguageTranslation = {
             },
         },
 
+        import_dump_dialog: {
+            menu_item: 'Dump SQL (serveur)',
+            title: 'Importer un dump SQL',
+            description:
+                'Choisissez un fichier .sql. Il est analysé dans votre navigateur : seuls le schéma obtenu et un rapport des instructions non traduites sont envoyés au serveur, jamais le fichier lui-même.',
+            dialect: 'Dialecte SQL',
+            dialect_placeholder: 'Choisir un dialecte',
+            dialect_required:
+                "Choisissez le dialecte du dump avant d'importer.",
+            parse_error_title: 'Fichier SQL illisible',
+            parse_error_description:
+                "Le fichier n'a pas pu être analysé. Rien n'a été envoyé. Choisissez un autre fichier ou vérifiez le dialecte.",
+            no_tables:
+                "Aucune table n'a été trouvée dans ce fichier. Rien n'a été envoyé.",
+            confirm_title: 'Remplacer le schéma actuel ?',
+            confirm_description:
+                "Le projet contient déjà {{count}} table(s). L'import les remplace : l'état précédent est supprimé logiquement et reste dans l'historique.",
+            confirm_description_unknown:
+                "Le projet contient déjà un schéma. L'import le remplace : l'état précédent est supprimé logiquement et reste dans l'historique.",
+            replace: 'Remplacer',
+            cancel: 'Annuler',
+            import: 'Importer',
+            close: 'Fermer',
+            success_title: 'Dump importé',
+            success_description:
+                '{{count}} élément(s) créé(s) (import n° {{sequence}}).',
+            report_title: 'Instructions non reprises',
+            report_empty: 'Toutes les instructions ont été traduites.',
+            report_summary: '{{count}} instruction(s) non reprise(s).',
+            report_line: 'Ligne',
+            report_type: 'Type',
+            report_reason: 'Raison',
+            report_truncated:
+                'Affichage des {{shown}} premières entrées sur {{total}}.',
+            local_update_error_title: 'Importé sur le serveur, non affiché ici',
+            local_update_error:
+                "Le dump a bien été enregistré sur le serveur, mais le diagramme n'a pas pu être mis à jour dans cette fenêtre. Rechargez la page pour afficher le schéma importé ; inutile de réimporter le fichier.",
+        },
+
         new_project_form: {
             title: 'Nouveau projet',
             description:
@@ -608,6 +647,22 @@ export const fr: LanguageTranslation = {
                 network:
                     'Le serveur est injoignable. Vérifiez votre connexion.',
                 unknown: "Une erreur inattendue s'est produite. Réessayez.",
+            },
+            import: {
+                title: "Impossible d'importer le dump",
+                unauthenticated:
+                    "Vous n'êtes pas authentifié. Vérifiez l'identifiant utilisateur. Rien n'a été enregistré.",
+                forbidden:
+                    'Seul le responsable du projet peut importer un dump.',
+                not_found: "Projet introuvable. Rien n'a été enregistré.",
+                too_large:
+                    "Le fichier est trop volumineux pour le serveur. Rien n'a été enregistré.",
+                validation:
+                    "Le serveur a refusé le schéma importé. Rien n'a été enregistré.",
+                network:
+                    "Le serveur est injoignable. Vérifiez votre connexion. Rien n'a été enregistré.",
+                unknown:
+                    "Une erreur inattendue s'est produite. Rien n'a été enregistré. Réessayez.",
             },
             table_delete: {
                 title: 'Impossible de supprimer la table',

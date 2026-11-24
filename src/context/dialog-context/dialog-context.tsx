@@ -71,6 +71,10 @@ export interface DialogContext {
         params: Omit<ImportDiagramDialogProps, 'dialog'>
     ) => void;
     closeImportDiagramDialog: () => void;
+
+    // Import dump dialog (API mode)
+    openImportDumpDialog: () => void;
+    closeImportDumpDialog: () => void;
 }
 
 export const dialogContext = createContext<DialogContext>({
@@ -96,4 +100,6 @@ export const dialogContext = createContext<DialogContext>({
     closeExportDiagramDialog: emptyFn,
     openImportDiagramDialog: emptyFn,
     closeImportDiagramDialog: emptyFn,
+    openImportDumpDialog: emptyFn,
+    closeImportDumpDialog: emptyFn,
 });
