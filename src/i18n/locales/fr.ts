@@ -576,6 +576,14 @@ export const fr: LanguageTranslation = {
             },
         },
 
+        projet_conflict_dialog: {
+            title: 'Votre copie locale diffère du serveur',
+            description:
+                'Le projet « {{name}} » enregistré dans ce navigateur ne correspond pas à la version du serveur. Quelle version voulez-vous ouvrir ?',
+            use_server: 'Utiliser la version du serveur',
+            keep_local: 'Garder ma version locale',
+        },
+
         api_errors: {
             table: {
                 title: "Impossible d'ajouter la table",
@@ -589,6 +597,27 @@ export const fr: LanguageTranslation = {
                 network:
                     'Le serveur est injoignable. Vérifiez votre connexion.',
                 unknown: "Une erreur inattendue s'est produite. Réessayez.",
+            },
+            projet_open: {
+                title_unauthenticated:
+                    "Impossible d'ouvrir le projet : non identifié",
+                title_forbidden: "Impossible d'ouvrir le projet : accès refusé",
+                title_not_found: "Impossible d'ouvrir le projet : introuvable",
+                title_network: 'Serveur injoignable',
+                title_server: 'Erreur du serveur',
+                title_unknown: "Impossible d'ouvrir le projet",
+                unauthenticated:
+                    "Vous n'êtes pas identifié. Vérifiez l'identifiant utilisateur.",
+                unauthenticated_dev_hint:
+                    'Développement : renseignez VITE_USER_ID ou la clé draftdb_user_id du localStorage.',
+                forbidden: 'Vous ne participez pas à ce projet.',
+                not_found: "Ce projet n'existe pas ou a été supprimé.",
+                network:
+                    'Le serveur est injoignable. Vérifiez votre connexion.',
+                server: "Le serveur n'a pas pu charger le projet. Réessayez plus tard.",
+                unknown: "Une erreur inattendue s'est produite. Réessayez.",
+                offline_local_copy:
+                    'Votre copie locale est ouverte ; elle peut différer de la version du serveur.',
             },
         },
     },

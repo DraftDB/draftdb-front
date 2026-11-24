@@ -566,6 +566,14 @@ export const en = {
             },
         },
 
+        projet_conflict_dialog: {
+            title: 'Your local copy differs from the server',
+            description:
+                'The project "{{name}}" stored in this browser does not match the version on the server. Which version do you want to open?',
+            use_server: 'Use the server version',
+            keep_local: 'Keep my local version',
+        },
+
         api_errors: {
             table: {
                 title: 'Unable to add the table',
@@ -577,6 +585,26 @@ export const en = {
                 validation: 'The table was rejected by the server',
                 network: 'The server is unreachable. Check your connection.',
                 unknown: 'An unexpected error occurred. Please try again.',
+            },
+            projet_open: {
+                title_unauthenticated:
+                    'Unable to open the project: not authenticated',
+                title_forbidden: 'Unable to open the project: access denied',
+                title_not_found: 'Unable to open the project: not found',
+                title_network: 'Server unreachable',
+                title_server: 'Server error',
+                title_unknown: 'Unable to open the project',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier.',
+                unauthenticated_dev_hint:
+                    'Development: set VITE_USER_ID or the draftdb_user_id key in localStorage.',
+                forbidden: 'You are not a participant of this project.',
+                not_found: 'This project does not exist or has been deleted.',
+                network: 'The server is unreachable. Check your connection.',
+                server: 'The server could not load the project. Please try again later.',
+                unknown: 'An unexpected error occurred. Please try again.',
+                offline_local_copy:
+                    'Your local copy is open; it may differ from the server version.',
             },
         },
     },
