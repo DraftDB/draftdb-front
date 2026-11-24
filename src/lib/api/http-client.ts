@@ -41,13 +41,21 @@ export const getAuthHeaders = (): Record<string, string> => {
     return id ? { 'X-User-Id': id } : {};
 };
 
+const UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Vrai si l'id a la forme d'un UUID, comme les id_projet du back. */
+export const isUuid = (id: string | undefined | null): id is string =>
+    typeof id === 'string' && UUID_PATTERN.test(id);
+
 /**
- * PROVISOIRE (comme PROJECT_ID) : l'id d'un diagramme ChartDB n'est pas un
- * UUID, le back attend celui d'un projet existant.
- * Source de l'{id_projet} de tous les appels.
+ * Source de l'{id_projet} de tous les appels. Un diagramme dont l'id est un
+ * UUID est un projet ouvert depuis le serveur : son id fait foi.
+ * PROVISOIRE (comme PROJECT_ID) : un diagramme ChartDB local n'a pas d'UUID,
+ * PROJECT_ID désigne alors le projet existant visé par le back.
  */
 export const getProjetId = (diagramId: string): string =>
-    (PROJECT_ID ?? '').trim() || diagramId;
+    isUuid(diagramId) ? diagramId : (PROJECT_ID ?? '').trim() || diagramId;
 
 export interface ApiRequestOptions {
     method?: string;
