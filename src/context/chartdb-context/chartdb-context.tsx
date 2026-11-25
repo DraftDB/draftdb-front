@@ -14,6 +14,18 @@ import { EventEmitter } from 'ahooks/lib/useEventEmitter';
 import type { Area } from '@/lib/domain/area';
 import type { DBCustomType } from '@/lib/domain/db-custom-type';
 import type { Note } from '@/lib/domain/note';
+import type { TableLinks } from '@/lib/api/tables-api';
+
+/**
+ * Demande la confirmation du concepteur avant la suppression d'une table.
+ * `links` est la liste renvoyée par le serveur (409), jamais calculée ici.
+ */
+export type ConfirmTableDeletion = (
+    table: DBTable,
+    links: TableLinks
+) => Promise<boolean>;
+
+export type DeleteTableOutcome = 'deleted' | 'cancelled' | 'error';
 
 export type ChartDBEventType =
     | 'add_tables'
@@ -105,9 +117,10 @@ export interface ChartDBContext {
     updateDatabaseEdition: (databaseEdition?: DatabaseEdition) => Promise<void>;
 
     // Table operations
+    /** null : création refusée par l'API (mode API) ou déjà en cours. */
     createTable: (
         attributes?: Partial<Omit<DBTable, 'id'>>
-    ) => Promise<DBTable>;
+    ) => Promise<DBTable | null>;
     addTable: (
         table: DBTable,
         options?: { updateHistory: boolean }
@@ -125,6 +138,14 @@ export interface ChartDBContext {
         ids: string[],
         options?: { updateHistory: boolean }
     ) => Promise<void>;
+    /**
+     * Mode API : suppression en deux appels (confirmation exigée par le
+     * serveur). La table n'est retirée localement qu'après l'accord du serveur.
+     */
+    deleteTableWithApi: (
+        id: string,
+        confirm: ConfirmTableDeletion
+    ) => Promise<DeleteTableOutcome>;
     updateTable: (
         id: string,
         table: Partial<DBTable>,
@@ -372,6 +393,7 @@ export const chartDBContext = createContext<ChartDBContext>({
     addTables: emptyFn,
     removeTable: emptyFn,
     removeTables: emptyFn,
+    deleteTableWithApi: emptyFn,
     updateTable: emptyFn,
     updateTablesState: emptyFn,
 

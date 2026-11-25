@@ -16,6 +16,7 @@ import { useDiagramFilter } from '@/context/diagram-filter-context/use-diagram-f
 import { useLocalConfig } from '@/hooks/use-local-config';
 import { useCanvas } from '@/hooks/use-canvas';
 import { defaultSchemas } from '@/lib/data/default-schemas';
+import { useTableNamePrompt } from '@/hooks/use-table-name-prompt';
 
 export const CanvasContextMenu: React.FC<React.PropsWithChildren> = ({
     children,
@@ -29,6 +30,7 @@ export const CanvasContextMenu: React.FC<React.PropsWithChildren> = ({
     const { t } = useTranslation();
     const { showDBViews } = useLocalConfig();
     const { setEditTableModeTable } = useCanvas();
+    const promptTableName = useTableNamePrompt();
 
     const { isMd: isDesktop } = useBreakpoint('md');
 
@@ -51,10 +53,19 @@ export const CanvasContextMenu: React.FC<React.PropsWithChildren> = ({
                     : schemasDisplayed[0]?.name;
             }
 
+            const answer = await promptTableName({
+                isView: false,
+                schema: schema ?? defaultSchemas[databaseType],
+            });
+            if (!answer) {
+                return;
+            }
+
             const newTable = await createTable({
                 x: position.x,
                 y: position.y,
                 schema,
+                ...answer,
             });
 
             if (newTable) {
@@ -67,6 +78,7 @@ export const CanvasContextMenu: React.FC<React.PropsWithChildren> = ({
             schemasDisplayed,
             setEditTableModeTable,
             databaseType,
+            promptTableName,
         ]
     );
 
@@ -89,11 +101,20 @@ export const CanvasContextMenu: React.FC<React.PropsWithChildren> = ({
                     : schemasDisplayed[0]?.name;
             }
 
+            const answer = await promptTableName({
+                isView: true,
+                schema: schema ?? defaultSchemas[databaseType],
+            });
+            if (!answer) {
+                return;
+            }
+
             const newView = await createTable({
                 x: position.x,
                 y: position.y,
                 schema,
                 isView: true,
+                ...answer,
             });
 
             if (newView) {
@@ -106,6 +127,7 @@ export const CanvasContextMenu: React.FC<React.PropsWithChildren> = ({
             schemasDisplayed,
             setEditTableModeTable,
             databaseType,
+            promptTableName,
         ]
     );
 

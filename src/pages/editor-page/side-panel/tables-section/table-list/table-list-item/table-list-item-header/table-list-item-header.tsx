@@ -38,6 +38,7 @@ import { cloneTable } from '@/lib/clone';
 import type { DBSchema } from '@/lib/domain';
 import { defaultSchemas } from '@/lib/data/default-schemas';
 import { useDiagramFilter } from '@/context/diagram-filter-context/use-diagram-filter';
+import { useDeleteTable } from '@/hooks/use-delete-table';
 
 export interface TableListItemHeaderProps {
     table: DBTable;
@@ -49,7 +50,6 @@ export const TableListItemHeader: React.FC<TableListItemHeaderProps> = ({
     const {
         updateTable,
         updateTablesState,
-        removeTable,
         createIndex,
         createField,
         createTable,
@@ -57,6 +57,7 @@ export const TableListItemHeader: React.FC<TableListItemHeaderProps> = ({
         databaseType,
         readonly,
     } = useChartDB();
+    const deleteTable = useDeleteTable();
     const { schemasDisplayed } = useDiagramFilter();
     const { openTableSchemaDialog } = useDialog();
     const { t } = useTranslation();
@@ -98,8 +99,8 @@ export const TableListItemHeader: React.FC<TableListItemHeaderProps> = ({
     );
 
     const deleteTableHandler = useCallback(() => {
-        removeTable(table.id);
-    }, [table.id, removeTable]);
+        void deleteTable(table.id);
+    }, [table.id, deleteTable]);
 
     const updateTableSchema = useCallback(
         ({ schema }: { schema: DBSchema }) => {

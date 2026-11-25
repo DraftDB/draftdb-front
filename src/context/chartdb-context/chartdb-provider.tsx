@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import type { DBTable } from '@/lib/domain/db-table';
 import { deepCopy, generateId } from '@/lib/utils';
 import { defaultTableColor, defaultAreaColor, viewColor } from '@/lib/colors';
@@ -34,6 +34,21 @@ import {
     type DBCustomType,
 } from '@/lib/domain/db-custom-type';
 import { getDefaultPrimaryKeyType } from '@/lib/data/data-types/data-types';
+import {
+    getDefaultTableName,
+    getUniqueTableName,
+} from '@/lib/domain/table-name';
+import { isApiConfigured } from '@/lib/api/http-client';
+import {
+    deleteTable,
+    describeTableApiError,
+    getTableLinksFromConfirmation,
+    isConfirmationRequired,
+    postTable,
+} from '@/lib/api/tables-api';
+import { toast } from '@/components/toast/use-toast';
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 
 export interface ChartDBProviderProps {
     diagram?: Diagram;
@@ -43,6 +58,7 @@ export interface ChartDBProviderProps {
 export const ChartDBProvider: React.FC<
     React.PropsWithChildren<ChartDBProviderProps>
 > = ({ children, diagram, readonly: readonlyProp }) => {
+    const { t } = useTranslation();
     const { hasDiff } = useDiff();
     const storageDB = useStorage();
     const events = useEventEmitter<ChartDBEvent>();
@@ -335,15 +351,19 @@ export const ChartDBProvider: React.FC<
         [addTables]
     );
 
+    // Garde anti double-clic : une seule création à la fois en mode API.
+    const creatingTableRef = useRef(false);
+
     const createTable: ChartDBContext['createTable'] = useCallback(
         async (attributes) => {
+            const apiMode = isApiConfigured();
             const isView = attributes?.isView ?? false;
-            const count = isView
-                ? tables.filter((t) => t.isView).length + 1
-                : tables.filter((t) => !t.isView).length + 1;
+            // Schéma de la table : celui de l'attribut, sinon celui par défaut
+            // du type de base.
+            const schema = attributes?.schema ?? defaultSchemas[databaseType];
             const table: DBTable = {
                 id: generateId(),
-                name: isView ? `view_${count}` : `table_${count}`,
+                name: getDefaultTableName(tables, isView),
                 x: 0,
                 y: 0,
                 fields: [
@@ -363,18 +383,60 @@ export const ChartDBProvider: React.FC<
                 isView: false,
                 order: tables.length,
                 ...attributes,
-                schema: attributes?.schema ?? defaultSchemas[databaseType],
+                schema,
             };
+
+            // Mode API : un nom passé en attribut (duplication…) est rendu
+            // unique dans le schéma. En mode local, les doublons restent
+            // acceptés comme dans ChartDB d'origine.
+            if (apiMode && attributes?.name !== undefined) {
+                table.name = getUniqueTableName({
+                    tables,
+                    baseName: attributes.name,
+                    schema,
+                });
+            }
 
             table.indexes = getTableIndexesWithPrimaryKey({
                 table,
             });
 
-            await addTable(table);
+            if (!apiMode) {
+                await addTable(table);
+                return table;
+            }
 
-            return table;
+            if (creatingTableRef.current) {
+                return null;
+            }
+            creatingTableRef.current = true;
+            try {
+                // Mode bloquant : la table n'apparaît qu'après le 201.
+                const response = await postTable(diagramId, table);
+                await addTable(table, { updateHistory: false });
+
+                if (response.avertissement) {
+                    toast({
+                        title: t('api_errors.table.warnings_title'),
+                        description: response.avertissement.message,
+                    });
+                }
+                return table;
+            } catch (error) {
+                const description = describeTableApiError(error);
+                toast({
+                    variant: 'destructive',
+                    title: t(description.titleKey),
+                    description:
+                        description.serverMessage ??
+                        t(description.descriptionKey),
+                });
+                return null;
+            } finally {
+                creatingTableRef.current = false;
+            }
         },
-        [addTable, tables, databaseType]
+        [addTable, tables, databaseType, diagramId, t]
     );
 
     const getTable: ChartDBContext['getTable'] = useCallback(
@@ -468,6 +530,83 @@ export const ChartDBProvider: React.FC<
         },
         [removeTables]
     );
+
+    // Un seul parcours de suppression à la fois (double-clic, Suppr répété).
+    const isDeletingTableRef = useRef(false);
+
+    const deleteTableWithApi: ChartDBContext['deleteTableWithApi'] =
+        useCallback(
+            async (id, confirm) => {
+                const table = getTable(id);
+                if (!table || isDeletingTableRef.current) {
+                    return 'cancelled';
+                }
+                isDeletingTableRef.current = true;
+
+                const notifyError = (error: unknown) => {
+                    const description = describeTableApiError(error, 'delete');
+                    toast({
+                        variant: 'destructive',
+                        title: i18n.t(description.titleKey),
+                        description:
+                            description.serverMessage ??
+                            i18n.t(description.descriptionKey),
+                    });
+                };
+
+                try {
+                    let deletedByFirstCall = false;
+
+                    // 1er appel, sans confirmation : le serveur n'écrit rien.
+                    try {
+                        await deleteTable(diagramId, id, {
+                            confirmation: false,
+                        });
+                        // Garde-fou : un 2xx tient lieu d'accord du serveur.
+                        deletedByFirstCall = true;
+                    } catch (error) {
+                        if (!isConfirmationRequired(error)) {
+                            notifyError(error);
+                            return 'error';
+                        }
+                        const links = getTableLinksFromConfirmation(error);
+                        if (!links) {
+                            // 409 sans liste exploitable : réponse inattendue.
+                            notifyError(error);
+                            return 'error';
+                        }
+                        const confirmed = await confirm(table, links);
+                        if (!confirmed) {
+                            return 'cancelled';
+                        }
+                    }
+
+                    // 2e appel, avec confirmation : seul appel qui écrit.
+                    if (!deletedByFirstCall) {
+                        try {
+                            await deleteTable(diagramId, id, {
+                                confirmation: true,
+                            });
+                        } catch (error) {
+                            // Aucun traitement à part, 404 compris : la table
+                            // reste dans le diagramme.
+                            notifyError(error);
+                            return 'error';
+                        }
+                    }
+
+                    // Retrait local seulement après l'accord du serveur, sans
+                    // undo (aucune route ne restaure une table). Les relations
+                    // et dépendances liées partent avec la table via
+                    // removeTables : voir RG-13, CU 2.4 et CU 2.5.
+                    await removeTables([id], { updateHistory: false });
+                    return 'deleted';
+                } finally {
+                    isDeletingTableRef.current = false;
+                }
+            },
+            [diagramId, getTable, removeTables]
+        );
 
     const updateTable: ChartDBContext['updateTable'] = useCallback(
         async (
@@ -2126,6 +2265,7 @@ export const ChartDBProvider: React.FC<
                 getTable,
                 removeTable,
                 removeTables,
+                deleteTableWithApi,
                 updateTable,
                 updateTablesState,
                 updateField,

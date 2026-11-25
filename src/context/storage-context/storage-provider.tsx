@@ -687,6 +687,78 @@ export const StorageProvider: React.FC<React.PropsWithChildren> = ({
         ]
     );
 
+    const replaceDiagram: StorageContext['replaceDiagram'] = useCallback(
+        async ({ diagram }) => {
+            const diagramId = diagram.id;
+            const withDiagramId = <T extends object>(items: T[] | undefined) =>
+                (items ?? []).map((item) => ({ ...item, diagramId }));
+
+            // Une seule transaction : en cas d'échec, Dexie annule tout et
+            // l'ancienne copie locale reste intacte.
+            await db.transaction(
+                'rw',
+                [
+                    db.diagrams,
+                    db.db_tables,
+                    db.db_relationships,
+                    db.db_dependencies,
+                    db.areas,
+                    db.db_custom_types,
+                    db.notes,
+                ],
+                async () => {
+                    await db.diagrams.delete(diagramId);
+                    await db.db_tables
+                        .where('diagramId')
+                        .equals(diagramId)
+                        .delete();
+                    await db.db_relationships
+                        .where('diagramId')
+                        .equals(diagramId)
+                        .delete();
+                    await db.db_dependencies
+                        .where('diagramId')
+                        .equals(diagramId)
+                        .delete();
+                    await db.areas
+                        .where('diagramId')
+                        .equals(diagramId)
+                        .delete();
+                    await db.db_custom_types
+                        .where('diagramId')
+                        .equals(diagramId)
+                        .delete();
+                    await db.notes
+                        .where('diagramId')
+                        .equals(diagramId)
+                        .delete();
+
+                    await db.diagrams.add({
+                        id: diagramId,
+                        name: diagram.name,
+                        databaseType: diagram.databaseType,
+                        databaseEdition: diagram.databaseEdition,
+                        createdAt: diagram.createdAt,
+                        updatedAt: diagram.updatedAt,
+                    });
+                    await db.db_tables.bulkAdd(withDiagramId(diagram.tables));
+                    await db.db_relationships.bulkAdd(
+                        withDiagramId(diagram.relationships)
+                    );
+                    await db.db_dependencies.bulkAdd(
+                        withDiagramId(diagram.dependencies)
+                    );
+                    await db.areas.bulkAdd(withDiagramId(diagram.areas));
+                    await db.db_custom_types.bulkAdd(
+                        withDiagramId(diagram.customTypes)
+                    );
+                    await db.notes.bulkAdd(withDiagramId(diagram.notes));
+                }
+            );
+        },
+        [db]
+    );
+
     const listDiagrams: StorageContext['listDiagrams'] = useCallback(
         async (
             options = {
@@ -881,6 +953,7 @@ export const StorageProvider: React.FC<React.PropsWithChildren> = ({
                 getConfig,
                 updateConfig,
                 addDiagram,
+                replaceDiagram,
                 listDiagrams,
                 getDiagram,
                 updateDiagram,
