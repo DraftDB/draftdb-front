@@ -16,6 +16,8 @@ import type { TableSchemaDialogProps } from '@/dialogs/table-schema-dialog/table
 import { TableSchemaDialog } from '@/dialogs/table-schema-dialog/table-schema-dialog';
 import type { TableNameDialogProps } from '@/dialogs/table-name-dialog/table-name-dialog';
 import { TableNameDialog } from '@/dialogs/table-name-dialog/table-name-dialog';
+import type { ProjetConflictDialogProps } from '@/dialogs/projet-conflict-dialog/projet-conflict-dialog';
+import { ProjetConflictDialog } from '@/dialogs/projet-conflict-dialog/projet-conflict-dialog';
 import { emptyFn } from '@/lib/utils';
 import { StarUsDialog } from '@/dialogs/star-us-dialog/star-us-dialog';
 import type { ExportImageDialogProps } from '@/dialogs/export-image-dialog/export-image-dialog';
@@ -149,6 +151,20 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
             [setOpenTableNameDialog]
         );
 
+    // Projet conflict dialog
+    const [openProjetConflictDialog, setOpenProjetConflictDialog] =
+        useState(false);
+    const [projetConflictDialogParams, setProjetConflictDialogParams] =
+        useState<Omit<ProjetConflictDialogProps, 'dialog'>>({
+            projetName: '',
+            onChoose: emptyFn,
+        });
+    const openProjetConflictDialogHandler: DialogContext['openProjetConflictDialog'] =
+        useCallback((params) => {
+            setProjetConflictDialogParams(params);
+            setOpenProjetConflictDialog(true);
+        }, []);
+
     // Export diagram dialog
     const [openExportDiagramDialog, setOpenExportDiagramDialog] =
         useState(false);
@@ -181,6 +197,9 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
                 closeTableSchemaDialog: () => setOpenTableSchemaDialog(false),
                 openTableNameDialog: openTableNameDialogHandler,
                 closeTableNameDialog: () => setOpenTableNameDialog(false),
+                openProjetConflictDialog: openProjetConflictDialogHandler,
+                closeProjetConflictDialog: () =>
+                    setOpenProjetConflictDialog(false),
                 openStarUsDialog: () => setOpenStarUsDialog(true),
                 closeStarUsDialog: () => setOpenStarUsDialog(false),
                 closeExportImageDialog: () => setOpenExportImageDialog(false),
@@ -223,6 +242,10 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
             <TableNameDialog
                 dialog={{ open: openTableNameDialog }}
                 {...tableNameDialogParams}
+            />
+            <ProjetConflictDialog
+                dialog={{ open: openProjetConflictDialog }}
+                {...projetConflictDialogParams}
             />
             <StarUsDialog dialog={{ open: openStarUsDialog }} />
             <ExportImageDialog

@@ -11,6 +11,7 @@ import {
     ApiError,
     apiRequest,
     getAuthHeaders,
+    isUuid,
     getServerMessage,
     isApiConfigured,
 } from '../http-client';
@@ -239,6 +240,22 @@ describe('http-client', () => {
                     })
                 )
             ).toBeUndefined();
+        });
+    });
+
+    describe('isUuid', () => {
+        it('reconnaît un UUID, majuscules comprises', () => {
+            expect(isUuid('3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c')).toBe(true);
+            expect(isUuid('3F2B8C1E-9A4D-4E7B-8C2A-1D5E6F7A8B9C')).toBe(true);
+        });
+
+        it('refuse un id ChartDB, une chaîne vide ou undefined', () => {
+            expect(isUuid('abcdef123456')).toBe(false);
+            expect(isUuid('')).toBe(false);
+            expect(isUuid(undefined)).toBe(false);
+            expect(isUuid('3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c-x')).toBe(
+                false
+            );
         });
     });
 });

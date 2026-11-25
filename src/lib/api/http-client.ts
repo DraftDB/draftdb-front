@@ -41,6 +41,13 @@ export const getAuthHeaders = (): Record<string, string> => {
     return id ? { 'X-User-Id': id } : {};
 };
 
+const UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Vrai si l'id a la forme d'un UUID, comme les id_projet du back. */
+export const isUuid = (id: string | undefined | null): id is string =>
+    typeof id === 'string' && UUID_PATTERN.test(id);
+
 export interface ApiRequestOptions {
     method?: string;
     body?: unknown;
