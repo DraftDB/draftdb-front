@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockEnv = vi.hoisted(() => ({
     API_URL: '',
     USER_ID: '',
-    PROJECT_ID: '',
 }));
 
 vi.mock('@/lib/env', () => mockEnv);
@@ -12,7 +11,6 @@ import {
     ApiError,
     apiRequest,
     getAuthHeaders,
-    getProjetId,
     isUuid,
     getServerMessage,
     isApiConfigured,
@@ -35,7 +33,6 @@ describe('http-client', () => {
     beforeEach(() => {
         mockEnv.API_URL = 'http://api.test';
         mockEnv.USER_ID = '';
-        mockEnv.PROJECT_ID = '';
         localStorage.clear();
         fetchMock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
@@ -243,24 +240,6 @@ describe('http-client', () => {
                     })
                 )
             ).toBeUndefined();
-        });
-    });
-
-    describe('getProjetId', () => {
-        it('renvoie l’id du diagramme si PROJECT_ID est vide', () => {
-            mockEnv.PROJECT_ID = '  ';
-            expect(getProjetId('diag-1')).toBe('diag-1');
-        });
-
-        it('renvoie PROJECT_ID s’il est renseigné', () => {
-            mockEnv.PROJECT_ID = ' proj-uuid ';
-            expect(getProjetId('diag-1')).toBe('proj-uuid');
-        });
-
-        it('garde l’id du diagramme si c’est un UUID (projet ouvert)', () => {
-            mockEnv.PROJECT_ID = 'proj-uuid';
-            const id = '3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c';
-            expect(getProjetId(id)).toBe(id);
         });
     });
 

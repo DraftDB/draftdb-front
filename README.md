@@ -82,6 +82,19 @@ npm install
 npm run dev
 ```
 
+### Mode API DraftDB
+
+Si `VITE_API_URL` est renseignée (voir `.env.example`), le front dialogue avec le back DraftDB ; sinon il fonctionne en mode local ChartDB d'origine (données dans le navigateur, flux inchangé).
+
+```bash
+cp .env.example .env.local   # VITE_API_URL, API_PROXY_TARGET, VITE_USER_ID
+npm run dev                  # /api est transmis au back via le proxy Vite
+```
+
+- **Créer un projet (CU 1.1)** : « Nouveau diagramme » affiche un formulaire nom (obligatoire, 100 caractères max) + description (500 max). Il appelle `POST /api/projets` avec l'en-tête `X-User-Id`, puis ouvre l'éditeur sur `/diagrams/<id_projet>` (schéma vide). L'UUID du projet est l'id du diagramme : il n'y a plus de `VITE_PROJECT_ID`. Rien n'est créé en local si l'API échoue.
+- **Ajouter une table (CU 2.1)** : `POST /api/projets/<id_projet>/tables`, sur un projet créé par le CU 1.1.
+- Identité provisoire : `VITE_USER_ID`, surchargée par `localStorage['draftdb_user_id']`.
+
 ### Build
 
 ```bash
@@ -151,7 +164,8 @@ Pour tester (back lancé en local) :
 2. Choisir l'identifiant d'un utilisateur dans la console du navigateur
    (prioritaire sur `VITE_USER_ID`) :
    `localStorage.setItem('draftdb_user_id', '<uuid utilisateur>')`.
-3. Ouvrir `http://localhost:5173/diagrams/<uuid d'un projet existant>`.
+3. Ouvrir `http://localhost:5173/diagrams/<uuid d'un projet existant>` (l'UUID est l'id du projet,
+   par exemple celui d'un projet créé via « Nouveau diagramme », cf. CU 1.1).
 
 Cas à vérifier :
 

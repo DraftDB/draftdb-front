@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -35,21 +35,39 @@ export const BaseAlertDialog: React.FC<BaseAlertDialogProps> = ({
 }) => {
     const { closeAlert } = useAlert();
 
+    // Un seul des deux rappels (onAction ou onClose) est exécuté par ouverture :
+    // Radix rappelle onOpenChange(false) après un clic sur Action ou Annuler.
+    const handledRef = useRef(false);
+    const isOpen = dialog?.open;
+    useEffect(() => {
+        if (isOpen) {
+            handledRef.current = false;
+        }
+    }, [isOpen]);
+
     const closeAlertHandler = useCallback(() => {
-        onClose?.();
+        if (!handledRef.current) {
+            handledRef.current = true;
+            onClose?.();
+        }
         closeAlert();
     }, [onClose, closeAlert]);
 
     const alertHandler = useCallback(() => {
-        onAction?.();
+        if (!handledRef.current) {
+            handledRef.current = true;
+            onAction?.();
+        }
         closeAlert();
     }, [onAction, closeAlert]);
+
     return (
         <AlertDialog
             {...dialog}
             onOpenChange={(open) => {
                 if (!open) {
-                    closeAlert();
+                    // Échap ou clic hors de la boîte : équivaut à annuler.
+                    closeAlertHandler();
                 }
             }}
         >

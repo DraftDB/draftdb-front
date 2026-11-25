@@ -576,6 +576,64 @@ export const fr: LanguageTranslation = {
             },
         },
 
+        import_dump_dialog: {
+            menu_item: 'Dump SQL (serveur)',
+            title: 'Importer un dump SQL',
+            description:
+                'Choisissez un fichier .sql. Il est analysé dans votre navigateur : seuls le schéma obtenu et un rapport des instructions non traduites sont envoyés au serveur, jamais le fichier lui-même.',
+            dialect: 'Dialecte SQL',
+            dialect_placeholder: 'Choisir un dialecte',
+            dialect_required:
+                "Choisissez le dialecte du dump avant d'importer.",
+            parse_error_title: 'Fichier SQL illisible',
+            parse_error_description:
+                "Le fichier n'a pas pu être analysé. Rien n'a été envoyé. Choisissez un autre fichier ou vérifiez le dialecte.",
+            no_tables:
+                "Aucune table n'a été trouvée dans ce fichier. Rien n'a été envoyé.",
+            confirm_title: 'Remplacer le schéma actuel ?',
+            confirm_description:
+                "Le projet contient déjà {{count}} table(s). L'import les remplace : l'état précédent est supprimé logiquement et reste dans l'historique.",
+            confirm_description_unknown:
+                "Le projet contient déjà un schéma. L'import le remplace : l'état précédent est supprimé logiquement et reste dans l'historique.",
+            replace: 'Remplacer',
+            cancel: 'Annuler',
+            import: 'Importer',
+            close: 'Fermer',
+            success_title: 'Dump importé',
+            success_description:
+                '{{count}} élément(s) créé(s) (import n° {{sequence}}).',
+            report_title: 'Instructions non reprises',
+            report_empty: 'Toutes les instructions ont été traduites.',
+            report_summary: '{{count}} instruction(s) non reprise(s).',
+            report_line: 'Ligne',
+            report_type: 'Type',
+            report_reason: 'Raison',
+            report_truncated:
+                'Affichage des {{shown}} premières entrées sur {{total}}.',
+            local_update_error_title: 'Importé sur le serveur, non affiché ici',
+            local_update_error:
+                "Le dump a bien été enregistré sur le serveur, mais le diagramme n'a pas pu être mis à jour dans cette fenêtre. Rechargez la page pour afficher le schéma importé ; inutile de réimporter le fichier.",
+        },
+
+        new_project_form: {
+            title: 'Nouveau projet',
+            description:
+                "Donnez un nom à votre projet. Le dialecte de base de données n'est pas demandé.",
+            name_label: 'Nom',
+            name_placeholder: 'Mon projet',
+            description_label: 'Description (facultative)',
+            description_placeholder: 'De quoi parle ce projet ?',
+            create: 'Créer le projet',
+            creating: 'Création…',
+            cancel: 'Annuler',
+            errors: {
+                required: 'Le nom ne peut pas être vide',
+                name_too_long: 'Le nom ne peut pas dépasser {{max}} caractères',
+                description_too_long:
+                    'La description ne peut pas dépasser {{max}} caractères',
+            },
+        },
+
         projet_conflict_dialog: {
             title: 'Votre copie locale diffère du serveur',
             description:
@@ -597,6 +655,55 @@ export const fr: LanguageTranslation = {
                 network:
                     'Le serveur est injoignable. Vérifiez votre connexion.',
                 unknown: "Une erreur inattendue s'est produite. Réessayez.",
+            },
+            import: {
+                title: "Impossible d'importer le dump",
+                unauthenticated:
+                    "Vous n'êtes pas authentifié. Vérifiez l'identifiant utilisateur. Rien n'a été enregistré.",
+                forbidden:
+                    'Seul le responsable du projet peut importer un dump.',
+                not_found: "Projet introuvable. Rien n'a été enregistré.",
+                too_large:
+                    "Le fichier est trop volumineux pour le serveur. Rien n'a été enregistré.",
+                validation:
+                    "Le serveur a refusé le schéma importé. Rien n'a été enregistré.",
+                network:
+                    "Le serveur est injoignable. Vérifiez votre connexion. Rien n'a été enregistré.",
+                unknown:
+                    "Une erreur inattendue s'est produite. Rien n'a été enregistré. Réessayez.",
+            },
+            table_delete: {
+                title: 'Impossible de supprimer la table',
+                confirm_title: 'Supprimer la table « {{name}} » ?',
+                confirm_description:
+                    'La table et ses colonnes seront retirées du schéma. Liens concernés :',
+                foreign_keys: 'Clés étrangères',
+                indexes: 'Index',
+                no_links:
+                    'Aucune clé étrangère ni aucun index ne touche cette table.',
+                confirm_action: 'Supprimer',
+                cancel: 'Annuler',
+                unauthenticated:
+                    'Vous devez être connecté pour supprimer une table.',
+                forbidden:
+                    'Seul un concepteur du projet peut modifier le schéma.',
+                not_found: "Table ou projet introuvable. Rien n'a été modifié.",
+                validation:
+                    "La demande a été refusée par le serveur. Rien n'a été modifié.",
+                network: "Le serveur est injoignable. Rien n'a été modifié.",
+                unknown:
+                    "Une erreur inattendue s'est produite. Rien n'a été modifié.",
+            },
+            projet: {
+                title: 'Impossible de créer le projet',
+                unauthenticated:
+                    "Vous n'êtes pas authentifié. Vérifiez l'identifiant utilisateur.",
+                validation: 'Le projet a été refusé par le serveur',
+                network:
+                    'Le serveur est injoignable. Vérifiez votre connexion.',
+                unknown: "Une erreur inattendue s'est produite. Réessayez.",
+                local_storage:
+                    "Le projet a été créé sur le serveur mais n'a pas pu être enregistré dans ce navigateur. Réessayez.",
             },
             projet_open: {
                 title_unauthenticated:

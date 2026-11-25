@@ -9,6 +9,8 @@ type EnTranslation = (typeof en)['translation'];
 type OptionalTranslationKeys =
     | 'api_errors'
     | 'table_name_dialog'
+    | 'new_project_form'
+    | 'import_dump_dialog'
     | 'projet_conflict_dialog';
 
 export type LanguageTranslation = Omit<typeof en, 'translation'> & {

@@ -14,5 +14,3 @@ export const DISABLE_ANALYTICS: boolean =
         import.meta.env.VITE_DISABLE_ANALYTICS) === 'true';
 export const API_URL: string = import.meta.env.VITE_API_URL ?? '';
 export const USER_ID: string = import.meta.env.VITE_USER_ID ?? '';
-// PROVISOIRE : UUID du projet tant que la création de projet n'est pas intégrée au front.
-export const PROJECT_ID: string = import.meta.env.VITE_PROJECT_ID ?? '';

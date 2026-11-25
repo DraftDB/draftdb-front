@@ -3,109 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockEnv = vi.hoisted(() => ({
     API_URL: '',
     USER_ID: '',
-    PROJECT_ID: '',
 }));
 
 vi.mock('@/lib/env', () => mockEnv);
 
-import { DatabaseType } from '@/lib/domain/database-type';
-import type { DBTable } from '@/lib/domain/db-table';
 import { ApiError } from '../http-client';
-import type { ProjetOuvertResponse } from '../projets-api';
 import {
+    MAX_DESCRIPTION_PROJET_LENGTH,
+    MAX_NOM_PROJET_LENGTH,
+    creerProjet,
     describeProjetApiError,
-    getNumeroSequence,
     getProjetApiErrorKind,
-    ouvrirProjet,
-    setNumeroSequence,
-    toLocalDiagram,
-    typeBaseToDatabaseType,
+    hasValidationErrors,
+    toCreerProjetBody,
+    validateCreerProjet,
 } from '../projets-api';
-
-const PROJET_ID = '3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c';
-
-const makeTable = (overrides: Partial<DBTable> = {}): DBTable => ({
-    id: 't1',
-    name: 'users',
-    schema: 'public',
-    x: 10,
-    y: 20,
-    color: '#8eb7ff',
-    isView: false,
-    createdAt: 1,
-    fields: [
-        {
-            id: 'f-id',
-            name: 'id',
-            type: { id: 'integer', name: 'integer' },
-            primaryKey: true,
-            unique: true,
-            nullable: false,
-            createdAt: 1,
-        },
-        {
-            id: 'f-email',
-            name: 'email',
-            type: { id: 'varchar', name: 'varchar' },
-            primaryKey: false,
-            unique: false,
-            nullable: true,
-            createdAt: 2,
-        },
-        {
-            id: 'f-age',
-            name: 'age',
-            type: { id: 'integer', name: 'integer' },
-            primaryKey: false,
-            unique: false,
-            nullable: true,
-            createdAt: 3,
-        },
-    ],
-    indexes: [
-        {
-            id: 'i1',
-            name: 'users_pkey',
-            unique: true,
-            fieldIds: ['f-id'],
-            isPrimaryKey: true,
-            createdAt: 1,
-        },
-    ],
-    ...overrides,
-});
-
-const makeResponse = (
-    overrides: Partial<ProjetOuvertResponse> = {}
-): ProjetOuvertResponse => ({
-    id_projet: PROJET_ID,
-    nom: 'Boutique',
-    description: null,
-    type_base: 'postgresql',
-    numero_sequence: 7,
-    diagramme: {
-        id: PROJET_ID,
-        name: 'Boutique',
-        databaseType: DatabaseType.POSTGRESQL,
-        tables: [makeTable()],
-        relationships: [
-            {
-                id: 'r1',
-                name: 'fk',
-                sourceTableId: 't1',
-                targetTableId: 't1',
-                sourceFieldId: 'f-id',
-                targetFieldId: 'f-age',
-                sourceCardinality: 'one',
-                targetCardinality: 'many',
-                createdAt: 4,
-            },
-        ],
-        createdAt: '2026-01-02T03:04:05.000Z',
-        updatedAt: '2026-02-03T04:05:06.000Z',
-    },
-    ...overrides,
-});
 
 const jsonResponse = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status });
@@ -118,13 +30,82 @@ const rejection = (promise: Promise<unknown>): Promise<ApiError> =>
         (e: unknown) => e as ApiError
     );
 
-describe('ouvrirProjet', () => {
+const projet = {
+    id_projet: '3f2b8c1e-0000-4000-8000-000000000001',
+    nom: 'Boutique',
+    description: null,
+    type_base: 'generic',
+    numero_sequence: 0,
+};
+
+describe('validateCreerProjet', () => {
+    it('refuse un nom vide ou fait d’espaces', () => {
+        expect(validateCreerProjet({ nom: '' })).toEqual({ nom: 'required' });
+        expect(validateCreerProjet({ nom: '   ' })).toEqual({
+            nom: 'required',
+        });
+    });
+
+    it('accepte un nom de 100 caractères et refuse 101', () => {
+        expect(
+            validateCreerProjet({ nom: 'a'.repeat(MAX_NOM_PROJET_LENGTH) })
+        ).toEqual({});
+        expect(
+            validateCreerProjet({ nom: 'a'.repeat(MAX_NOM_PROJET_LENGTH + 1) })
+        ).toEqual({ nom: 'too_long' });
+    });
+
+    it('ignore les espaces de début et de fin pour la longueur', () => {
+        expect(
+            validateCreerProjet({
+                nom: `  ${'a'.repeat(MAX_NOM_PROJET_LENGTH)}  `,
+            })
+        ).toEqual({});
+    });
+
+    it('accepte une description de 500 caractères et refuse 501', () => {
+        expect(
+            validateCreerProjet({
+                nom: 'p',
+                description: 'd'.repeat(MAX_DESCRIPTION_PROJET_LENGTH),
+            })
+        ).toEqual({});
+        expect(
+            validateCreerProjet({
+                nom: 'p',
+                description: 'd'.repeat(MAX_DESCRIPTION_PROJET_LENGTH + 1),
+            })
+        ).toEqual({ description: 'too_long' });
+    });
+
+    it('signale les deux champs à la fois', () => {
+        const errors = validateCreerProjet({
+            nom: '',
+            description: 'd'.repeat(MAX_DESCRIPTION_PROJET_LENGTH + 1),
+        });
+        expect(errors).toEqual({ nom: 'required', description: 'too_long' });
+        expect(hasValidationErrors(errors)).toBe(true);
+        expect(hasValidationErrors({})).toBe(false);
+    });
+});
+
+describe('toCreerProjetBody', () => {
+    it('retire les espaces et omet une description vide', () => {
+        expect(
+            toCreerProjetBody({ nom: ' Boutique ', description: '  ' })
+        ).toEqual({ nom: 'Boutique' });
+        expect(
+            toCreerProjetBody({ nom: 'Boutique', description: ' Ventes ' })
+        ).toEqual({ nom: 'Boutique', description: 'Ventes' });
+    });
+});
+
+describe('creerProjet', () => {
     const fetchMock = vi.fn();
 
     beforeEach(() => {
         mockEnv.API_URL = 'http://api.test';
         mockEnv.USER_ID = 'user-1';
-        mockEnv.PROJECT_ID = 'autre-projet';
         localStorage.clear();
         fetchMock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
@@ -134,185 +115,131 @@ describe('ouvrirProjet', () => {
         vi.unstubAllGlobals();
     });
 
-    it('envoie un GET sans corps sur /api/projets/{id} avec X-User-Id', async () => {
-        fetchMock.mockResolvedValue(jsonResponse(makeResponse()));
-        const controller = new AbortController();
+    it('envoie un POST sur /api/projets avec X-User-Id et le corps (201)', async () => {
+        fetchMock.mockResolvedValue(jsonResponse(projet, 201));
 
-        const response = await ouvrirProjet(PROJET_ID, {
-            signal: controller.signal,
+        const result = await creerProjet({
+            nom: ' Boutique ',
+            description: 'Ventes',
         });
 
-        expect(fetchMock).toHaveBeenCalledTimes(1);
         const [url, init] = fetchMock.mock.calls[0];
-        // L'id de l'URL fait foi, PROJECT_ID n'est pas utilisé.
-        expect(url).toBe(`http://api.test/api/projets/${PROJET_ID}`);
-        expect(init.method).toBe('GET');
-        expect(init.body).toBeUndefined();
+        expect(url).toBe('http://api.test/api/projets');
+        expect(init.method).toBe('POST');
         expect(init.headers['X-User-Id']).toBe('user-1');
-        expect(init.headers['Content-Type']).toBeUndefined();
-        expect(init.signal).toBe(controller.signal);
-        expect(response.numero_sequence).toBe(7);
+        expect(init.headers['Content-Type']).toBe('application/json');
+        expect(JSON.parse(init.body)).toEqual({
+            nom: 'Boutique',
+            description: 'Ventes',
+        });
+        expect(result).toEqual(projet);
     });
 
-    it('préfère l’identifiant de localStorage à VITE_USER_ID', async () => {
+    it('utilise l’identifiant du localStorage en priorité', async () => {
         localStorage.setItem('draftdb_user_id', 'user-ls');
-        fetchMock.mockResolvedValue(jsonResponse(makeResponse()));
+        fetchMock.mockResolvedValue(jsonResponse(projet, 201));
 
-        await ouvrirProjet(PROJET_ID);
+        await creerProjet({ nom: 'Boutique' });
 
         expect(fetchMock.mock.calls[0][1].headers['X-User-Id']).toBe('user-ls');
     });
 
-    it.each([
-        [401, 'unauthenticated'],
-        [403, 'forbidden'],
-        [404, 'not_found'],
-        [500, 'server'],
-        [503, 'server'],
-    ] as const)('rejette un %i en %s', async (status, kind) => {
-        fetchMock.mockResolvedValue(jsonResponse({ detail: 'refusé' }, status));
-
-        const error = await rejection(ouvrirProjet(PROJET_ID));
-
+    it('rejette avec une ApiError 401', async () => {
+        fetchMock.mockResolvedValue(
+            jsonResponse({ detail: 'Utilisateur non identifié' }, 401)
+        );
+        const error = await rejection(creerProjet({ nom: 'Boutique' }));
         expect(error).toBeInstanceOf(ApiError);
-        expect(error.status).toBe(status);
-        expect(getProjetApiErrorKind(error)).toBe(kind);
+        expect(error.status).toBe(401);
+        expect(describeProjetApiError(error).kind).toBe('unauthenticated');
     });
 
-    it('rejette une erreur réseau en status 0', async () => {
+    it('rejette avec une ApiError 422 dont le motif est lisible', async () => {
+        fetchMock.mockResolvedValue(
+            jsonResponse(
+                {
+                    detail: [
+                        {
+                            loc: ['body', 'nom'],
+                            msg: 'String should have at most 100 characters',
+                            type: 'string_too_long',
+                        },
+                    ],
+                },
+                422
+            )
+        );
+        const error = await rejection(creerProjet({ nom: 'Boutique' }));
+        expect(error.status).toBe(422);
+        expect(describeProjetApiError(error).serverMessage).toBe(
+            'String should have at most 100 characters (nom)'
+        );
+    });
+
+    it('rejette avec une ApiError status 0 en cas d’erreur réseau', async () => {
         fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
-
-        const error = await rejection(ouvrirProjet(PROJET_ID));
-
+        const error = await rejection(creerProjet({ nom: 'Boutique' }));
+        expect(error).toBeInstanceOf(ApiError);
         expect(error.status).toBe(0);
         expect(getProjetApiErrorKind(error)).toBe('network');
     });
+});
 
-    it('laisse passer l’annulation (AbortError)', async () => {
-        fetchMock.mockRejectedValue(new DOMException('aborted', 'AbortError'));
+describe('getProjetApiErrorKind', () => {
+    const apiError = (status: number) =>
+        new ApiError({ status, message: `HTTP ${status}` });
 
-        const error = await rejection(ouvrirProjet(PROJET_ID));
+    it.each([
+        [0, 'network'],
+        [401, 'unauthenticated'],
+        [422, 'validation'],
+        [403, 'unknown'],
+        [500, 'unknown'],
+    ])('statut %i → %s', (status, kind) => {
+        expect(getProjetApiErrorKind(apiError(status))).toBe(kind);
+    });
 
-        expect(error).toBeInstanceOf(DOMException);
+    it('renvoie unknown pour une erreur qui n’est pas une ApiError', () => {
+        expect(getProjetApiErrorKind(new Error('boom'))).toBe('unknown');
     });
 });
 
 describe('describeProjetApiError', () => {
-    const err = (status: number) => new ApiError({ status, message: 'x' });
-
-    it('donne un titre et un message distincts par cas', () => {
-        const kinds = [401, 403, 404, 0, 500].map(
-            (status) => describeProjetApiError(err(status)).descriptionKey
-        );
-        expect(new Set(kinds).size).toBe(5);
-        expect(describeProjetApiError(err(403))).toEqual({
-            kind: 'forbidden',
-            titleKey: 'api_errors.projet_open.title_forbidden',
-            descriptionKey: 'api_errors.projet_open.forbidden',
-            blocking: true,
+    it('donne les clés i18n api_errors.projet.*', () => {
+        const error = new ApiError({ status: 401, message: 'HTTP 401' });
+        expect(describeProjetApiError(error)).toEqual({
+            kind: 'unauthenticated',
+            titleKey: 'api_errors.projet.title',
+            descriptionKey: 'api_errors.projet.unauthenticated',
+            serverMessage: undefined,
         });
     });
 
-    it('bloque 401, 403 et 404 seulement', () => {
-        expect(describeProjetApiError(err(401)).blocking).toBe(true);
-        expect(describeProjetApiError(err(404)).blocking).toBe(true);
-        expect(describeProjetApiError(err(0)).blocking).toBe(false);
-        expect(describeProjetApiError(err(502)).blocking).toBe(false);
-        expect(describeProjetApiError(err(418)).blocking).toBe(false);
-        expect(describeProjetApiError(new Error('x')).kind).toBe('unknown');
+    it('renseigne le message du serveur pour un 422 texte', () => {
+        const error = new ApiError({
+            status: 422,
+            message: 'Nom invalide',
+            details: { detail: 'Nom invalide' },
+        });
+        expect(describeProjetApiError(error)).toMatchObject({
+            kind: 'validation',
+            descriptionKey: 'api_errors.projet.validation',
+            serverMessage: 'Nom invalide',
+        });
     });
-});
 
-describe('toLocalDiagram', () => {
-    const now = new Date('2026-11-24T00:00:00.000Z');
+    it('ne renseigne pas le message du serveur hors 422', () => {
+        const error = new ApiError({
+            status: 401,
+            message: 'Non identifié',
+            details: { detail: 'Non identifié' },
+        });
+        expect(describeProjetApiError(error).serverMessage).toBeUndefined();
+    });
 
-    it('prend id, nom et type de base du projet, sans régénérer les ids', () => {
-        const diagram = toLocalDiagram(
-            makeResponse({
-                nom: 'Nouveau nom',
-                type_base: 'mysql',
-                diagramme: {
-                    ...makeResponse().diagramme,
-                    id: 'autre-id',
-                    name: 'Ancien nom',
-                },
-            }),
-            now
+    it('gère une erreur inconnue', () => {
+        expect(describeProjetApiError('oops').descriptionKey).toBe(
+            'api_errors.projet.unknown'
         );
-
-        expect(diagram.id).toBe(PROJET_ID);
-        expect(diagram.name).toBe('Nouveau nom');
-        expect(diagram.databaseType).toBe(DatabaseType.MYSQL);
-        expect(diagram.tables?.map((t) => t.id)).toEqual(['t1']);
-        expect(diagram.relationships?.map((r) => r.id)).toEqual(['r1']);
-        expect(diagram.tables?.[0].indexes.map((i) => i.id)).toEqual(['i1']);
-    });
-
-    it('garde les colonnes dans l’ordre du serveur', () => {
-        const diagram = toLocalDiagram(makeResponse(), now);
-        expect(diagram.tables?.[0].fields.map((f) => f.id)).toEqual([
-            'f-id',
-            'f-email',
-            'f-age',
-        ]);
-    });
-
-    it('reconvertit les dates en Date', () => {
-        const diagram = toLocalDiagram(makeResponse(), now);
-        expect(diagram.createdAt).toBeInstanceOf(Date);
-        expect(diagram.createdAt.toISOString()).toBe(
-            '2026-01-02T03:04:05.000Z'
-        );
-        expect(diagram.updatedAt.toISOString()).toBe(
-            '2026-02-03T04:05:06.000Z'
-        );
-    });
-
-    it('convertit un createdAt d’élément en chaîne en nombre', () => {
-        const response = makeResponse();
-        const table = response.diagramme.tables![0];
-        (table as unknown as { createdAt: string }).createdAt =
-            '2026-01-02T03:04:05.000Z';
-        const diagram = toLocalDiagram(response, now);
-        expect(diagram.tables?.[0].createdAt).toBe(
-            Date.parse('2026-01-02T03:04:05.000Z')
-        );
-    });
-
-    it('rend un diagramme vide pour un projet sans table', () => {
-        const diagram = toLocalDiagram(
-            makeResponse({
-                diagramme: {
-                    id: PROJET_ID,
-                    name: 'Vide',
-                    databaseType: DatabaseType.GENERIC,
-                },
-            }),
-            now
-        );
-        expect(diagram.tables).toEqual([]);
-        expect(diagram.relationships).toEqual([]);
-        expect(diagram.notes).toEqual([]);
-        expect(diagram.createdAt).toEqual(now);
-        expect(diagram.updatedAt).toEqual(now);
-    });
-
-    it('se replie sur GENERIC pour un type de base inconnu', () => {
-        expect(typeBaseToDatabaseType('oracle')).toBe(DatabaseType.GENERIC);
-        expect(typeBaseToDatabaseType('postgresql')).toBe(
-            DatabaseType.POSTGRESQL
-        );
-        expect(typeBaseToDatabaseType('generic')).toBe(DatabaseType.GENERIC);
-    });
-});
-
-describe('numero_sequence', () => {
-    beforeEach(() => localStorage.clear());
-
-    it('est conservé par projet', () => {
-        expect(getNumeroSequence(PROJET_ID)).toBeUndefined();
-        setNumeroSequence(PROJET_ID, 12);
-        expect(getNumeroSequence(PROJET_ID)).toBe(12);
-        expect(getNumeroSequence('autre')).toBeUndefined();
     });
 });

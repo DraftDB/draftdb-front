@@ -24,6 +24,7 @@ import type { ExportImageDialogProps } from '@/dialogs/export-image-dialog/expor
 import { ExportImageDialog } from '@/dialogs/export-image-dialog/export-image-dialog';
 import { ExportDiagramDialog } from '@/dialogs/export-diagram-dialog/export-diagram-dialog';
 import { ImportDiagramDialog } from '@/dialogs/import-diagram-dialog/import-diagram-dialog';
+import { ImportDumpDialog } from '@/dialogs/import-dump-dialog/import-dump-dialog';
 
 export const DialogProvider: React.FC<React.PropsWithChildren> = ({
     children,
@@ -172,6 +173,9 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
     const [openImportDiagramDialog, setOpenImportDiagramDialog] =
         useState(false);
 
+    // Import dump dialog
+    const [openImportDumpDialog, setOpenImportDumpDialog] = useState(false);
+
     return (
         <dialogContext.Provider
             value={{
@@ -206,6 +210,8 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
                 openImportDiagramDialog: () => setOpenImportDiagramDialog(true),
                 closeImportDiagramDialog: () =>
                     setOpenImportDiagramDialog(false),
+                openImportDumpDialog: () => setOpenImportDumpDialog(true),
+                closeImportDumpDialog: () => setOpenImportDumpDialog(false),
             }}
         >
             {children}
@@ -248,6 +254,7 @@ export const DialogProvider: React.FC<React.PropsWithChildren> = ({
             />
             <ExportDiagramDialog dialog={{ open: openExportDiagramDialog }} />
             <ImportDiagramDialog dialog={{ open: openImportDiagramDialog }} />
+            <ImportDumpDialog dialog={{ open: openImportDumpDialog }} />
         </dialogContext.Provider>
     );
 };

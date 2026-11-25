@@ -566,6 +566,64 @@ export const en = {
             },
         },
 
+        import_dump_dialog: {
+            menu_item: 'SQL dump (server)',
+            title: 'Import a SQL dump',
+            description:
+                'Choose a .sql file. It is analyzed in your browser: only the resulting schema and a report of the statements that could not be translated are sent to the server, never the file itself.',
+            dialect: 'SQL dialect',
+            dialect_placeholder: 'Choose a dialect',
+            dialect_required:
+                'Choose the dialect of the dump before importing.',
+            parse_error_title: 'Unreadable SQL file',
+            parse_error_description:
+                'The file could not be analyzed. Nothing was sent. Choose another file or check the dialect.',
+            no_tables: 'No table was found in this file. Nothing was sent.',
+            confirm_title: 'Replace the current schema?',
+            confirm_description:
+                'The project already contains {{count}} table(s). Importing replaces them: the previous state is logically deleted and remains in the history.',
+            confirm_description_unknown:
+                'The project already contains a schema. Importing replaces it: the previous state is logically deleted and remains in the history.',
+            replace: 'Replace',
+            cancel: 'Cancel',
+            import: 'Import',
+            close: 'Close',
+            success_title: 'Dump imported',
+            success_description:
+                '{{count}} element(s) created (import no. {{sequence}}).',
+            report_title: 'Statements not imported',
+            report_empty: 'All statements were translated.',
+            report_summary: '{{count}} statement(s) could not be translated.',
+            report_line: 'Line',
+            report_type: 'Type',
+            report_reason: 'Reason',
+            report_truncated:
+                'Showing the first {{shown}} of {{total}} entries.',
+            local_update_error_title:
+                'Imported on the server, not displayed here',
+            local_update_error:
+                'The dump was saved on the server, but the diagram could not be refreshed in this window. Reload the page to display the imported schema; do not import the file again.',
+        },
+
+        new_project_form: {
+            title: 'New project',
+            description:
+                'Name your project. The database dialect is not required.',
+            name_label: 'Name',
+            name_placeholder: 'My project',
+            description_label: 'Description (optional)',
+            description_placeholder: 'What is this project about?',
+            create: 'Create project',
+            creating: 'Creating…',
+            cancel: 'Cancel',
+            errors: {
+                required: 'The name cannot be empty',
+                name_too_long: 'The name cannot exceed {{max}} characters',
+                description_too_long:
+                    'The description cannot exceed {{max}} characters',
+            },
+        },
+
         projet_conflict_dialog: {
             title: 'Your local copy differs from the server',
             description:
@@ -585,6 +643,50 @@ export const en = {
                 validation: 'The table was rejected by the server',
                 network: 'The server is unreachable. Check your connection.',
                 unknown: 'An unexpected error occurred. Please try again.',
+            },
+            import: {
+                title: 'Unable to import the dump',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier. Nothing was saved.',
+                forbidden: 'Only the project owner can import a dump.',
+                not_found: 'Project not found. Nothing was saved.',
+                too_large:
+                    'The file is too large for the server. Nothing was saved.',
+                validation:
+                    'The server rejected the imported schema. Nothing was saved.',
+                network:
+                    'The server is unreachable. Check your connection. Nothing was saved.',
+                unknown:
+                    'An unexpected error occurred. Nothing was saved. Please try again.',
+            },
+            table_delete: {
+                title: 'Could not delete the table',
+                confirm_title: 'Delete table "{{name}}"?',
+                confirm_description:
+                    'The table and its columns will be removed from the schema. The following links are affected:',
+                foreign_keys: 'Foreign keys',
+                indexes: 'Indexes',
+                no_links: 'No foreign key or index is linked to this table.',
+                confirm_action: 'Delete',
+                cancel: 'Cancel',
+                unauthenticated: 'You must be signed in to delete a table.',
+                forbidden:
+                    'Only a designer of the project can change the schema.',
+                not_found: 'Table or project not found. Nothing was changed.',
+                validation:
+                    'The request was refused by the server. Nothing was changed.',
+                network: 'The server is unreachable. Nothing was changed.',
+                unknown: 'An unexpected error occurred. Nothing was changed.',
+            },
+            projet: {
+                title: 'Unable to create the project',
+                unauthenticated:
+                    'You are not authenticated. Check the user identifier.',
+                validation: 'The project was rejected by the server',
+                network: 'The server is unreachable. Check your connection.',
+                unknown: 'An unexpected error occurred. Please try again.',
+                local_storage:
+                    'The project was created on the server but could not be saved in this browser. Please try again.',
             },
             projet_open: {
                 title_unauthenticated:

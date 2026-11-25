@@ -1,10 +1,10 @@
 import type { Diagram } from '@/lib/domain/diagram';
 import type {
-    ProjetApiErrorDescription,
+    OuvrirProjetApiErrorDescription,
     ProjetOuvertResponse,
 } from '@/lib/api/projets-api';
 import {
-    describeProjetApiError,
+    describeOuvrirProjetApiError,
     setNumeroSequence,
     toLocalDiagram,
 } from '@/lib/api/projets-api';
@@ -15,9 +15,9 @@ export type OpenProjetResult =
     /** Diagramme prêt dans Dexie : version du serveur ou copie locale gardée. */
     | { kind: 'opened'; source: 'server' | 'local' }
     /** Ne rien ouvrir : retour à l'accueil (401, 403, 404, ou rien en local). */
-    | { kind: 'redirect'; error: ProjetApiErrorDescription }
+    | { kind: 'redirect'; error: OuvrirProjetApiErrorDescription }
     /** Serveur indisponible : la copie locale est ouverte. */
-    | { kind: 'offline_local'; error: ProjetApiErrorDescription }
+    | { kind: 'offline_local'; error: OuvrirProjetApiErrorDescription }
     /** L'utilisateur a quitté : ne rien faire. */
     | { kind: 'aborted' };
 
@@ -65,7 +65,7 @@ export const openProjet = async (
         if (isAbortError(error) || signal?.aborted) {
             return { kind: 'aborted' };
         }
-        const description = describeProjetApiError(error);
+        const description = describeOuvrirProjetApiError(error);
         if (description.blocking || !local) {
             return { kind: 'redirect', error: description };
         }
@@ -92,7 +92,7 @@ export const openProjet = async (
         await replaceDiagram(server);
     } catch (error) {
         // Transaction annulée : l'ancienne copie locale est intacte.
-        const description = describeProjetApiError(error);
+        const description = describeOuvrirProjetApiError(error);
         return local
             ? { kind: 'offline_local', error: description }
             : { kind: 'redirect', error: description };
